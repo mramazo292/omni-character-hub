@@ -43,6 +43,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
           badge: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
           accent: 'text-sky-400',
         };
+      case 'janny':
       case 'janitor':
         return {
           border: 'border-neutral-800 hover:border-indigo-500/50 hover:shadow-indigo-500/10',
@@ -145,8 +146,8 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
 
         {/* Bottom Avatar Overlay: Source-Specific Metrics */}
         <div className="absolute bottom-2.5 inset-x-2.5 flex items-center justify-between text-[11px] font-medium text-neutral-300 pointer-events-none">
-          {/* Janitor AI Specific Metrics */}
-          {character.sourceId === 'janitor' && character.janitorMetadata && (
+          {/* Janny AI Specific Metrics */}
+          {(character.sourceId === 'janny' || character.sourceId === 'janitor') && character.janitorMetadata && (
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 rounded-md bg-neutral-950/80 px-2 py-0.5 backdrop-blur-sm ring-1 ring-white/10">
                 <MessagesSquare className="h-3 w-3 text-indigo-400" />

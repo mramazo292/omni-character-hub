@@ -1,4 +1,4 @@
-export type CharacterSource = 'datacat' | 'janitor' | 'chub' | 'local';
+export type CharacterSource = 'datacat' | 'janny' | 'janitor' | 'chub' | 'local';
 
 export interface BaseCharacter {
   id: string;

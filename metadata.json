@@ -1,6 +1,6 @@
 {
   "name": "Omni Character Hub",
-  "description": "Multi-source character-card library browser and importer supporting Datacat, JanitorAI, Chub.ai, and local Tavern cards.",
+  "description": "Multi-source character-card library browser and importer supporting Datacat, Janny AI, Chub.ai, and local Tavern cards.",
   "version": "2.0.0",
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -76,9 +76,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           { value: 'popular', label: 'Most Popular' },
           { value: 'tokens', label: 'Highest Tokens' },
         ];
+      case 'janny':
       case 'janitor':
         return [
-          { value: 'trending', label: 'Trending' },
+          { value: 'recent', label: 'Most Recent' },
           { value: 'popular', label: 'All-Time Popular' },
           { value: 'messages', label: 'Most Messages' },
           { value: 'tokens', label: 'Total Tokens' },
@@ -103,8 +104,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     switch (source) {
       case 'datacat':
         return { label: 'Datacat Native Index', color: 'border-sky-500/30 text-sky-400 bg-sky-500/10' };
+      case 'janny':
       case 'janitor':
-        return { label: 'JanitorAI Archive', color: 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10' };
+        return { label: 'Janny AI Archive', color: 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10' };
       case 'chub':
         return { label: 'Chub.ai Repository', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' };
       case 'local':
@@ -113,6 +115,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   const badge = getSourceBadge();
+  const sourceDisplayName =
+    source === 'datacat'
+      ? 'Datacat'
+      : source === 'janny' || source === 'janitor'
+      ? 'Janny AI'
+      : source === 'chub'
+      ? 'Chub.ai'
+      : 'Library';
 
   return (
     <div className="space-y-4">
@@ -128,7 +138,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             type="text"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder={`Search ${source === 'datacat' ? 'Datacat' : source === 'janitor' ? 'JanitorAI' : source === 'chub' ? 'Chub.ai' : 'Library'} characters... (Press '/' to search)`}
+            placeholder={`Search ${sourceDisplayName} characters... (Press '/' to search)`}
             className="w-full rounded-xl border border-neutral-800 bg-neutral-900/90 py-2.5 pl-10 pr-20 text-sm text-neutral-100 placeholder-neutral-500 shadow-inner focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-1.5">

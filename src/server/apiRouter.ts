@@ -5,9 +5,9 @@ import {
   getDatacatTaxonomy,
 } from './datacat.ts';
 import {
-  searchJanitorCharacters,
-  getJanitorCharacter,
-  JANITOR_TAGS,
+  searchJannyCharacters,
+  getJannyCharacter,
+  JANNY_TAGS,
 } from './janitor.ts';
 import {
   searchChubCharacters,
@@ -22,10 +22,11 @@ apiRouter.get('/status', async (_req, res) => {
     status: 'online',
     version: '2.0.0',
     connectors: {
-      datacat: { available: true, authMode: 'session-token' },
-      janitor: { available: true, authMode: 'archive-proxy' },
-      chub: { available: true, authMode: 'public-gateway' },
-      local: { available: true, mode: 'in-browser-storage' },
+      datacat: { available: true, authMode: 'session-token', title: 'Datacat Native' },
+      janny: { available: true, authMode: 'archive-proxy', title: 'Janny AI' },
+      janitor: { available: true, authMode: 'archive-proxy', title: 'Janny AI' },
+      chub: { available: true, authMode: 'public-gateway', title: 'Chub.ai' },
+      local: { available: true, mode: 'in-browser-storage', title: 'My Library' },
     },
   });
 });
@@ -40,7 +41,7 @@ apiRouter.get('/datacat/characters', async (req, res) => {
     const sort = req.query.sort as string;
 
     const data = await searchDatacatCharacters({ search, limit, offset, tagIds, sort });
-    
+
     // Normalize into canonical shape
     const characters = (data.characters || []).map((c: any) => ({
       id: c.characterId || c.character_id || c.id,
@@ -145,8 +146,8 @@ apiRouter.get('/datacat/taxonomy', async (_req, res) => {
   }
 });
 
-// Janitor endpoints
-apiRouter.get('/janitor/characters', async (req, res) => {
+// Janny AI endpoints (supports both /janny and /janitor paths)
+const handleJannySearch = async (req: any, res: any) => {
   try {
     const search = req.query.search as string;
     const limit = parseInt(req.query.limit as string) || 30;
@@ -154,27 +155,36 @@ apiRouter.get('/janitor/characters', async (req, res) => {
     const sort = req.query.sort as string;
     const tagId = req.query.tagId as string;
 
-    const result = await searchJanitorCharacters({ search, limit, offset, sort, tagId });
+    const result = await searchJannyCharacters({ search, limit, offset, sort, tagId });
     res.json(result);
   } catch (err: any) {
-    console.error('[API] Janitor search error:', err.message);
+    console.error('[API] Janny AI search error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
-});
+};
 
-apiRouter.get('/janitor/character/:id', async (req, res) => {
+const handleJannyGet = async (req: any, res: any) => {
   try {
-    const character = await getJanitorCharacter(req.params.id);
+    const character = await getJannyCharacter(req.params.id);
     res.json({ success: true, character });
   } catch (err: any) {
-    console.error('[API] Janitor get character error:', err.message);
+    console.error('[API] Janny AI get character error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
-});
+};
 
-apiRouter.get('/janitor/tags', (_req, res) => {
-  res.json({ success: true, tags: JANITOR_TAGS });
-});
+const handleJannyTags = (_req: any, res: any) => {
+  res.json({ success: true, tags: JANNY_TAGS });
+};
+
+apiRouter.get('/janny/characters', handleJannySearch);
+apiRouter.get('/janitor/characters', handleJannySearch);
+
+apiRouter.get('/janny/character/:id', handleJannyGet);
+apiRouter.get('/janitor/character/:id', handleJannyGet);
+
+apiRouter.get('/janny/tags', handleJannyTags);
+apiRouter.get('/janitor/tags', handleJannyTags);
 
 // Chub endpoints
 apiRouter.get('/chub/characters', async (req, res) => {

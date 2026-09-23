@@ -15,7 +15,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   density: 'comfortable',
   viewMode: 'grid',
   pageSize: 24,
-  safeMode: true,
+  safeMode: false,
   activeSourceSpace: 'All',
 };
 
