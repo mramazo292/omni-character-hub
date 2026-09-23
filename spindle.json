@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "name": "Omni Character Hub",
+  "identifier": "omni_character_hub",
+  "author": "Community",
+  "github": "https://github.com/yahooomega292-ai/omni-character-hub",
+  "homepage": "https://github.com/yahooomega292-ai/omni-character-hub",
+  "description": "Browse and import characters from Chub.ai, JanitorAI, and Datacat.",
+  "permissions": [
+    "characters",
+    "cors_proxy"
+  ],
+  "entry_backend": "dist/backend.js",
+  "entry_frontend": "dist/frontend.js",
+  "minimum_lumiverse_version": "0.1.0"
+}

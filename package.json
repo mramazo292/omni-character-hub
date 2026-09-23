@@ -1,0 +1,7 @@
+{
+  "name": "omni-character-hub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browse and import characters from Chub, Janitor, and Datacat."
+}
