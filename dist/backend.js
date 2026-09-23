@@ -36,9 +36,8 @@ const Chub = {
   avatarBase: 'https://avatars.charhub.io/avatars',
 
   async search({ query = '', page = 1, sort = 'download_count', asc = false, nsfw = false, tag = '', tokenRange = '' }) {
-    const term = [query, tag].filter(Boolean).join(' ');
     const params = new URLSearchParams({
-      search: term,
+      search: query,
       first: '24',
       page: String(page),
       sort: sort,
@@ -47,6 +46,7 @@ const Chub = {
       nsfw: nsfw ? 'true' : 'false'
     });
 
+    if (tag) params.append('topics', tag);
     if (tokenRange === 'short') params.append('max_tokens', '1000');
     else if (tokenRange === 'medium') { params.append('min_tokens', '1000'); params.append('max_tokens', '3000'); }
     else if (tokenRange === 'long') params.append('min_tokens', '3000');
@@ -134,118 +134,6 @@ const Chub = {
   }
 };
 
-// --- PROVIDER: DATACAT (datacat.run) ---
-const Datacat = {
-  apiBase: 'https://datacat.run',
-  headers: {
-    'X-Datacat-Client-Id': 'datacat_client_v1',
-    'Accept': 'application/json, text/html'
-  },
-
-  async search({ query = '', page = 1, sort = 'fresh', tag = '' }) {
-    const term = [query, tag].filter(Boolean).join(' ');
-
-    // 1. Try Client API
-    try {
-      const endpoint = term
-        ? `${this.apiBase}/api/client/v1/characters?search=${encodeURIComponent(term)}&page=${page}`
-        : `${this.apiBase}/api/client/v1/fresh?page=${page}`;
-
-      const data = await httpFetch(endpoint, { headers: this.headers });
-      const items = Array.isArray(data) ? data : (data?.characters || data?.nodes || data?.items || data?.data);
-      if (Array.isArray(items) && items.length > 0) {
-        return {
-          total: items.length,
-          characters: items.map(c => ({
-            id: c.id,
-            name: c.name || 'Unnamed',
-            creator: c.creator?.name || c.creator || 'Datacat Creator',
-            avatarUrl: `${this.apiBase}/api/client/v1/characters/${c.id}/avatar`,
-            webSummary: c.summary || c.tagline || (c.description ? c.description.slice(0, 95) + '...' : ''),
-            tags: (c.tags || []).slice(0, 5),
-            downloads: c.kudos || c.downloads || 0,
-            stars: 0,
-            tokens: c.token_count || 0,
-            hasExpressions: false,
-            source: 'datacat'
-          }))
-        };
-      }
-    } catch {}
-
-    // 2. HTML Scraper Fallback on datacat.run/characters/recent
-    try {
-      const html = await httpFetch(`${this.apiBase}/characters/recent?page=${page}&q=${encodeURIComponent(term)}`);
-      if (typeof html === 'string') {
-        const regex = /href="\/characters\/([^"]+)"[^>]*>.*?src="([^"]+)".*?<h3[^>]*>([^<]+)<\/h3>/gis;
-        const characters = [];
-        let m;
-        while ((m = regex.exec(html)) !== null && characters.length < 24) {
-          characters.push({
-            id: m[1],
-            name: m[3].trim(),
-            creator: 'Datacat Creator',
-            avatarUrl: m[2].startsWith('http') ? m[2] : `${this.apiBase}${m[2]}`,
-            webSummary: 'Archived Datacat character card',
-            tags: ['Datacat', 'Janitor'],
-            downloads: 0,
-            stars: 0,
-            tokens: 0,
-            hasExpressions: false,
-            source: 'datacat'
-          });
-        }
-        if (characters.length > 0) return { total: characters.length, characters };
-      }
-    } catch {}
-
-    return { total: 0, characters: [] };
-  },
-
-  async getDetails(id) {
-    let d = {};
-    try {
-      const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card`, { headers: this.headers });
-      d = card?.data || card || {};
-    } catch {}
-
-    const charDesc = d.description || '';
-    const charPers = d.personality || '';
-    const charFirstMes = d.first_mes || '';
-
-    return {
-      id,
-      name: d.name || 'Datacat Character',
-      creator: d.creator || 'Datacat',
-      avatarUrl: `${this.apiBase}/api/client/v1/characters/${id}/avatar`,
-      webSummary: d.creator_notes || d.description?.slice(0, 140) || 'Archived character from Datacat repository.',
-      charDescription: charDesc || 'Character prompt definition encoded in card.',
-      personality: charPers || 'Standard personality traits.',
-      scenario: d.scenario || 'No scenario defined.',
-      first_mes: charFirstMes || 'Ready for chat.',
-      alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
-      creator_notes: d.creator_notes || '',
-      system_prompt: d.system_prompt || '',
-      mes_example: d.mes_example || '',
-      tags: d.tags || ['Datacat'],
-      downloads: 0,
-      stars: 0,
-      totalTokens: approxTokens(charDesc + charPers + charFirstMes),
-      descTokens: approxTokens(charDesc),
-      greetingTokens: approxTokens(charFirstMes),
-      hasExpressions: false,
-      hasLorebook: false,
-      createdAt: 'Archive',
-      source: 'datacat'
-    };
-  },
-
-  async fetchCard(id) {
-    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card`, { headers: this.headers });
-    return { card };
-  }
-};
-
 // --- PROVIDER: JANNYAI / JANITOR ---
 const JannyAI = {
   avatarBase: 'https://image.jannyai.com/bot-avatars',
@@ -255,24 +143,30 @@ const JannyAI = {
     return match ? match[0] : input.trim();
   },
 
-  async search({ query = '', page = 1, sort = 'trending', asc = false, nsfw = false, tag = '' }) {
-    // Map Janitor-specific sort modes
-    let mappedSort = 'download_count';
-    if (sort === 'trending') mappedSort = 'star_count';
-    else if (sort === 'recent') mappedSort = 'created_at';
-    else if (sort === 'popular') mappedSort = 'download_count';
-    else if (sort === 'favorites') mappedSort = 'rating_count';
+  async search({ query = '', page = 1, sort = 'download_count', asc = false, nsfw = false, tag = '' }) {
+    // Map Janitor sorts cleanly to backend index
+    let sortField = sort;
+    if (sort === 'trending') sortField = 'star_count';
+    else if (sort === 'popular') sortField = 'download_count';
+    else if (sort === 'recent') sortField = 'created_at';
+    else if (sort === 'active') sortField = 'last_activity_at';
 
-    const term = [query, tag, 'JanitorAI'].filter(Boolean).join(' ');
     const params = new URLSearchParams({
-      search: term,
+      search: query,
       first: '24',
       page: String(page),
-      sort: mappedSort,
+      sort: sortField,
       asc: asc ? 'true' : 'false',
       venus: 'false',
       nsfw: nsfw ? 'true' : 'false'
     });
+
+    // Use specific topic filter
+    if (tag) {
+      params.append('topics', tag);
+    } else {
+      params.append('topics', 'JanitorAI');
+    }
 
     const data = await httpFetch(`https://api.chub.ai/search?${params}`);
     const nodes = data?.data?.nodes || data?.nodes || [];
@@ -321,11 +215,11 @@ const JannyAI = {
         name: d.name || node.name || 'Janitor Character',
         creator: idOrPath.split('/')[0] || 'Unknown',
         avatarUrl: `https://avatars.charhub.io/avatars/${idOrPath}/avatar.webp`,
-        webSummary: node.tagline || (node.description ? node.description.slice(0, 160) + '...' : 'JanitorAI character definition.'),
-        charDescription: charDesc || 'Character prompt definition encoded in card.',
-        personality: charPers || 'No personality definition visible.',
-        scenario: d.scenario || node.scenario || 'No scenario defined.',
-        first_mes: charFirstMes || '',
+        webSummary: node.tagline || node.description || 'Janitor character definition.',
+        charDescription: charDesc || 'Prompt definition encoded in card.',
+        personality: charPers || 'Personality defined in card.',
+        scenario: d.scenario || node.scenario || 'No specific scenario.',
+        first_mes: charFirstMes || 'Hello!',
         alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
         creator_notes: d.creator_notes || '',
         system_prompt: d.system_prompt || '',
@@ -349,11 +243,11 @@ const JannyAI = {
       name: 'Janitor Character',
       creator: 'JannyAI',
       avatarUrl: `${this.avatarBase}/${uuid}.webp`,
-      webSummary: 'Full character definition encoded inside card file.',
-      charDescription: 'Direct card export. All character prompt fields and instructions are packaged for Lumiverse.',
-      personality: 'Defined inside card specification.',
+      webSummary: 'Direct card export. All character prompt fields and instructions are packaged for Lumiverse.',
+      charDescription: 'Full prompt definition will be parsed upon card download.',
+      personality: 'Defined in card file.',
       scenario: 'Available after import.',
-      first_mes: 'Card ready for import.',
+      first_mes: 'Ready for chat.',
       alternate_greetings: [],
       creator_notes: '',
       system_prompt: '',
@@ -395,8 +289,122 @@ const JannyAI = {
   }
 };
 
+// --- PROVIDER: DATACAT (datacat.run) ---
+const Datacat = {
+  apiBase: 'https://datacat.run',
+
+  async search({ query = '', page = 1, sort = 'fresh', tag = '' }) {
+    const term = [query, tag].filter(Boolean).join(' ');
+
+    // 1. Try public client API
+    try {
+      const endpoint = term
+        ? `${this.apiBase}/api/client/v1/characters?search=${encodeURIComponent(term)}&page=${page}&anonymous=1`
+        : `${this.apiBase}/api/client/v1/fresh?page=${page}&anonymous=1`;
+
+      const data = await httpFetch(endpoint, {
+        headers: { 'X-Datacat-Client-Id': 'datacat_client_v1', 'Accept': 'application/json' }
+      });
+      const items = Array.isArray(data) ? data : (data?.characters || data?.nodes || data?.items || data?.data);
+      if (Array.isArray(items) && items.length > 0) {
+        return {
+          total: items.length,
+          characters: items.map(c => ({
+            id: c.id,
+            name: c.name || 'Unnamed',
+            creator: c.creator?.name || c.creator || 'Datacat Creator',
+            avatarUrl: `${this.apiBase}/api/client/v1/characters/${c.id}/avatar`,
+            webSummary: c.summary || c.tagline || (c.description ? c.description.slice(0, 95) + '...' : ''),
+            tags: (c.tags || []).slice(0, 5),
+            downloads: c.kudos || c.downloads || 0,
+            stars: 0,
+            tokens: c.token_count || 0,
+            hasExpressions: false,
+            source: 'datacat'
+          }))
+        };
+      }
+    } catch {}
+
+    // 2. HTML Scraper Fallback
+    try {
+      const html = await httpFetch(`${this.apiBase}/characters/recent?page=${page}&q=${encodeURIComponent(term)}`);
+      if (typeof html === 'string') {
+        const regex = /href="\/characters\/([^"]+)"[^>]*>.*?src="([^"]+)".*?<h3[^>]*>([^<]+)<\/h3>/gis;
+        const characters = [];
+        let m;
+        while ((m = regex.exec(html)) !== null && characters.length < 24) {
+          characters.push({
+            id: m[1],
+            name: m[3].trim(),
+            creator: 'Datacat Creator',
+            avatarUrl: m[2].startsWith('http') ? m[2] : `${this.apiBase}${m[2]}`,
+            webSummary: 'Archived character card from Datacat catalog.',
+            tags: ['Datacat', 'Janitor'],
+            downloads: 0,
+            stars: 0,
+            tokens: 0,
+            hasExpressions: false,
+            source: 'datacat'
+          });
+        }
+        if (characters.length > 0) return { total: characters.length, characters };
+      }
+    } catch {}
+
+    return { total: 0, characters: [] };
+  },
+
+  async getDetails(id) {
+    let d = {};
+    try {
+      const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card?anonymous=1`, {
+        headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
+      });
+      d = card?.data || card || {};
+    } catch {}
+
+    const charDesc = d.description || '';
+    const charPers = d.personality || '';
+    const charFirstMes = d.first_mes || '';
+
+    return {
+      id,
+      name: d.name || 'Datacat Character',
+      creator: d.creator || 'Datacat',
+      avatarUrl: `${this.apiBase}/api/client/v1/characters/${id}/avatar?anonymous=1`,
+      webSummary: d.creator_notes || d.description?.slice(0, 140) || 'Archived character card from Datacat.',
+      charDescription: charDesc || 'Prompt definition encoded in card.',
+      personality: charPers || 'Standard personality traits.',
+      scenario: d.scenario || 'No scenario defined.',
+      first_mes: charFirstMes || 'Ready for chat.',
+      alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
+      creator_notes: d.creator_notes || '',
+      system_prompt: d.system_prompt || '',
+      mes_example: d.mes_example || '',
+      tags: d.tags || ['Datacat'],
+      downloads: 0,
+      stars: 0,
+      totalTokens: approxTokens(charDesc + charPers + charFirstMes),
+      descTokens: approxTokens(charDesc),
+      greetingTokens: approxTokens(charFirstMes),
+      hasExpressions: false,
+      hasLorebook: false,
+      createdAt: 'Archive',
+      source: 'datacat'
+    };
+  },
+
+  async fetchCard(id) {
+    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card?anonymous=1`, {
+      headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
+    });
+    return { card };
+  }
+};
+
 // --- IPC DISPATCHER ---
-const providers = { chub: Chub, datacat: Datacat, janny: JannyAI };
+const providers = { chub: Chub, janny: JannyAI, datacat: Datacat };
 
 spindle.onFrontendMessage(async (msg, userId) => {
   const { action, provider = 'chub', payload = {}, requestId } = msg || {};
