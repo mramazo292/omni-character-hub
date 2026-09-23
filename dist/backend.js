@@ -1,83 +1,368 @@
-const EXT = 'omni_character_hub';
-
+// --- UNIFIED RESILIENT NETWORK ENGINE ---
 async function httpFetch(url, options = {}) {
-  const headers = { Accept: 'application/json, text/plain, */*', ...(options.headers || {}) };
+  const headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+    ...(options.headers || {})
+  };
+
   if (typeof spindle !== 'undefined' && typeof spindle.cors === 'function') {
     try {
-      const r = await spindle.cors(url, { ...options, headers });
-      if (r?.body) {
-        if (typeof r.body === 'string') { try { return JSON.parse(r.body); } catch { return r.body; } }
-        return r.body;
+      const res = await spindle.cors(url, { ...options, headers });
+      if (res && res.body) {
+        if (typeof res.body === 'string') {
+          try { return JSON.parse(res.body); } catch { return res.body; }
+        }
+        return res.body;
       }
-    } catch (e) { spindle.log?.warn?.(`Omni ${url}: ${e.message}`); }
+    } catch (e) {
+      spindle.log?.warn?.(`spindle.cors notice: ${e.message}`);
+    }
   }
-  const r = await fetch(url, { ...options, headers });
-  const t = await r.text();
-  try { return JSON.parse(t); } catch { return t; }
+
+  const res = await fetch(url, { ...options, headers });
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { return text; }
 }
 
-const tokenEstimate = s => s ? Math.round(String(s).length / 3.8) : 0;
+function approxTokens(str) {
+  if (!str) return 0;
+  return Math.round(str.length / 3.8);
+}
 
+// ==========================================
+// 1. CHUB.AI PROVIDER (Native Chub API)
+// ==========================================
 const Chub = {
-  id: 'chub', name: 'Chub.ai',
-  sorts: ['download_count','star_count','last_activity_at','created_at'],
-  async search({query='',page=1,sort='download_count',tag=''}) {
-    const p = new URLSearchParams({search:query,first:'24',page:String(page),sort,venus:'false',asc:'false'});
-    if (tag) p.set('topics', tag);
-    const d = await httpFetch(`https://api.chub.ai/search?${p}`);
-    const nodes = d?.data?.nodes || d?.nodes || [];
-    return nodes.map(c => ({source:'chub', id:c.fullPath, name:c.name||'Unnamed', creator:c.fullPath?.split('/')[0]||'Unknown', avatarUrl:`https://avatars.charhub.io/avatars/${c.fullPath}/avatar.webp`, tagline:c.tagline||c.description?.slice(0,120)||'', tags:c.topics||[], stats:{downloads:c.download_count||0,stars:c.star_count||0,tokens:c.token_count||0}}));
+  apiBase: 'https://api.chub.ai',
+  avatarBase: 'https://avatars.charhub.io/avatars',
+
+  async search({ query = '', page = 1, sort = 'download_count', nsfw = false, tag = '' }) {
+    const params = new URLSearchParams({
+      search: query,
+      first: '24',
+      page: String(page),
+      sort: sort,
+      venus: 'false',
+      asc: 'false',
+      nsfw: nsfw ? 'true' : 'false'
+    });
+    if (tag) params.append('topics', tag);
+
+    const data = await httpFetch(`${this.apiBase}/search?${params}`);
+    const nodes = data?.data?.nodes || data?.nodes || [];
+
+    return {
+      characters: nodes.map(c => ({
+        id: c.fullPath,
+        name: c.name || 'Unnamed',
+        creator: c.fullPath ? c.fullPath.split('/')[0] : 'Unknown',
+        avatarUrl: `${this.avatarBase}/${c.fullPath}/avatar.webp`,
+        tagline: c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
+        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 4),
+        downloads: c.download_count || 0,
+        stars: c.star_count || 0,
+        tokens: c.token_count || 0,
+        source: 'chub'
+      }))
+    };
   },
-  async details(id) {
-    const nodeRes = await httpFetch(`https://api.chub.ai/api/characters/${id}?full=true`);
-    const node = nodeRes?.node || nodeRes || {};
-    let card = {};
-    try { const r = await httpFetch('https://api.chub.ai/api/characters/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fullPath:id,format:'tavern'})}); card = r?.data || r || {}; } catch {}
-    return {source:'chub', id, name:card.name||node.name||'Unnamed', creator:id.split('/')[0]||'Unknown', avatarUrl:`https://avatars.charhub.io/avatars/${id}/avatar.webp`, summary:node.description||node.tagline||'', tags:node.topics||card.tags||[], first_mes:card.first_mes||node.first_mes||'', alternate_greetings:card.alternate_greetings||[], description:card.description||'', personality:card.personality||node.personality||'', scenario:card.scenario||node.scenario||'', mes_example:card.mes_example||'', creator_notes:card.creator_notes||card.extensions?.creator_notes||'', system_prompt:card.system_prompt||'', stats:{downloads:node.download_count||0,stars:node.star_count||0,tokens:node.token_count||tokenEstimate((card.description||'')+(card.personality||''))}};
+
+  async getDetails(fullPath) {
+    const res = await httpFetch(`${this.apiBase}/api/characters/${fullPath}?full=true`);
+    const node = res?.node || res || {};
+
+    let cardData = {};
+    try {
+      cardData = await httpFetch(`${this.apiBase}/api/characters/download`, {
+        method: 'POST',
+        body: JSON.stringify({ fullPath, format: 'tavern' }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch {
+      cardData = node.definition || {};
+    }
+
+    const d = cardData?.data || cardData || {};
+    const ext = d.extensions || {};
+    const charDesc = d.description || '';
+    const charPers = d.personality || node.personality || '';
+    const charFirstMes = d.first_mes || node.first_mes || '';
+
+    return {
+      id: fullPath,
+      name: d.name || node.name || 'Unnamed',
+      creator: fullPath.split('/')[0] || 'Unknown',
+      avatarUrl: `${this.avatarBase}/${fullPath}/avatar.webp`,
+      webSummary: node.description || node.tagline || 'No catalog summary provided.',
+      charDescription: charDesc || 'No character prompt definition found.',
+      personality: charPers || 'No personality definition visible.',
+      scenario: d.scenario || node.scenario || 'No scenario defined.',
+      first_mes: charFirstMes || 'Hello!',
+      alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
+      creator_notes: d.creator_notes || ext.creator_notes || '',
+      system_prompt: d.system_prompt || '',
+      mes_example: d.mes_example || '',
+      tags: (node.topics || d.tags || []).filter(t => t && t !== 'ROOT'),
+      downloads: node.download_count || 0,
+      stars: node.star_count || 0,
+      totalTokens: node.token_count || approxTokens(charDesc + charPers + charFirstMes),
+      source: 'chub'
+    };
   },
-  async import(id) { return httpFetch('https://api.chub.ai/api/characters/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fullPath:id,format:'tavern'})}); }
+
+  async fetchCard(fullPath) {
+    const cardData = await httpFetch(`${this.apiBase}/api/characters/download`, {
+      method: 'POST',
+      body: JSON.stringify({ fullPath, format: 'tavern' }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return { card: cardData };
+  }
 };
 
-const JannyAI = {
-  id:'janny', name:'Janny AI',
-  sorts:['trending','popular','recent'],
-  extractId(v){ const m=String(v).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i); return m?.[0]||String(v).trim(); },
-  async search({query='',page=1,sort='trending',tag=''}) {
-    const p = new URLSearchParams({page:String(page),sort,search:query}); if(tag)p.set('tags',tag);
-    const d = await httpFetch(`https://janitorai.com/hampter/characters?${p}`);
-    const items = Array.isArray(d?.data)?d.data:Array.isArray(d)?d:[];
-    return items.map(c=>({source:'janny',id:c.id,name:c.name||'Unnamed',creator:c.creator_name||c.author||'Janny AI Creator',avatarUrl:c.avatar?.startsWith('http')?c.avatar:`https://ella.janitorai.com/bot-avatars/${c.avatar}`,tagline:c.description||c.personality?.slice(0,120)||'',tags:Array.isArray(c.tags)?c.tags:[],stats:{chats:c.stats?.chat||c.chat_count||0,favorites:c.stats?.favorite||0,tokens:c.tokens||0}}));
+// ==========================================
+// 2. JANITOR AI PROVIDER (Native Hampter API)
+// ==========================================
+const JanitorAI = {
+  janitorApi: 'https://janitorai.com',
+  jannyDownload: 'https://api.jannyai.com/api/v1/download',
+
+  extractId(input) {
+    const match = input.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    return match ? match[0] : input.trim();
   },
-  async details(id) {
-    const uuid=this.extractId(id), d=await httpFetch(`https://janitorai.com/hampter/characters/${uuid}`), c=d?.character||d||{};
-    return {source:'janny',id:uuid,name:c.name||'Unnamed',creator:c.creator_name||c.author||'Janny AI Creator',avatarUrl:c.avatar?.startsWith('http')?c.avatar:`https://ella.janitorai.com/bot-avatars/${c.avatar}`,summary:c.description||'',tags:Array.isArray(c.tags)?c.tags:[],first_mes:c.first_message||'',alternate_greetings:Array.isArray(c.first_messages)?c.first_messages:[],description:c.description||'',personality:c.personality||'',scenario:c.scenario||'',mes_example:c.example_dialogs||'',creator_notes:c.creator_notes||'',system_prompt:'',stats:{chats:c.stats?.chat||0,favorites:c.stats?.favorite||0,tokens:c.tokens||tokenEstimate((c.personality||'')+(c.first_message||''))}};
+
+  async search({ query = '', page = 1, sort = 'trending', tag = '', nsfw = false }) {
+    let sortParam = sort === 'popular' ? 'popular' : (sort === 'recent' ? 'latest' : 'trending');
+    const params = new URLSearchParams({
+      page: String(page),
+      sort: sortParam,
+      search: query,
+      nsfw: nsfw ? 'true' : 'false'
+    });
+    if (tag) params.append('tags', tag);
+
+    try {
+      const data = await httpFetch(`${this.janitorApi}/hampter/characters?${params}`);
+      const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+
+      if (items.length > 0) {
+        return {
+          characters: items.map(c => ({
+            id: c.id,
+            name: c.name || 'Unnamed',
+            creator: c.creator_name || c.author || 'Janitor Creator',
+            avatarUrl: c.avatar?.startsWith('http') ? c.avatar : `https://ella.janitorai.com/bot-avatars/${c.avatar}`,
+            tagline: c.description || c.personality?.slice(0, 90) || '',
+            tags: Array.isArray(c.tags) ? c.tags.slice(0, 4) : ['JanitorAI'],
+            downloads: c.stats?.chat || c.chat_count || 0,
+            stars: c.stats?.favorite || 0,
+            tokens: c.tokens || 0,
+            source: 'janitor'
+          }))
+        };
+      }
+    } catch (e) {
+      spindle.log?.warn?.(`Janitor Hampter fetch error: ${e.message}`);
+    }
+
+    return { characters: [] };
   },
-  async import(id){ const uuid=this.extractId(id); const d=await httpFetch('https://api.jannyai.com/api/v1/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({characterId:uuid})}); if(!d?.downloadUrl)throw new Error('Janny AI did not return a character-card download.'); const r=await fetch(d.downloadUrl); return {rawPngBuffer:await r.arrayBuffer()}; }
+
+  async getDetails(idOrUrl) {
+    const uuid = this.extractId(idOrUrl);
+    try {
+      const data = await httpFetch(`${this.janitorApi}/hampter/characters/${uuid}`);
+      const c = data?.character || data || {};
+
+      return {
+        id: uuid,
+        name: c.name || 'Janitor Character',
+        creator: c.creator_name || 'Janitor Creator',
+        avatarUrl: c.avatar?.startsWith('http') ? c.avatar : `https://ella.janitorai.com/bot-avatars/${c.avatar}`,
+        webSummary: c.description || 'Janitor character definition.',
+        charDescription: c.personality || c.description || 'Definition encoded in card.',
+        personality: c.personality || 'Defined in card file.',
+        scenario: c.scenario || 'Scenario included in prompt.',
+        first_mes: c.first_message || 'Ready for chat.',
+        alternate_greetings: Array.isArray(c.first_messages) ? c.first_messages : [],
+        creator_notes: c.creator_notes || '',
+        system_prompt: '',
+        mes_example: c.example_dialogs || '',
+        tags: Array.isArray(c.tags) ? c.tags : ['JanitorAI'],
+        downloads: c.stats?.chat || 0,
+        stars: c.stats?.favorite || 0,
+        totalTokens: c.tokens || approxTokens((c.personality || '') + (c.first_message || '')),
+        source: 'janitor'
+      };
+    } catch {
+      return {
+        id: uuid,
+        name: 'Janitor Character',
+        creator: 'JanitorAI',
+        avatarUrl: `https://image.jannyai.com/bot-avatars/${uuid}.webp`,
+        webSummary: 'Full character card ready for import.',
+        charDescription: 'All prompts will be extracted directly from card file.',
+        personality: 'Defined in card file.',
+        scenario: 'Available after import.',
+        first_mes: 'Ready for chat.',
+        alternate_greetings: [],
+        creator_notes: '',
+        system_prompt: '',
+        mes_example: '',
+        tags: ['JanitorAI'],
+        downloads: 0,
+        stars: 0,
+        totalTokens: 0,
+        source: 'janitor'
+      };
+    }
+  },
+
+  async fetchCard(idOrUrl) {
+    const uuid = this.extractId(idOrUrl);
+    const res = await httpFetch(this.jannyDownload, {
+      method: 'POST',
+      body: JSON.stringify({ characterId: uuid }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!res?.downloadUrl) throw new Error('Could not download card from Janitor proxy. Verify character UUID.');
+    const imgRes = await fetch(res.downloadUrl);
+    const pngBuffer = await imgRes.arrayBuffer();
+    return { rawPngBuffer: pngBuffer };
+  }
 };
 
+// ==========================================
+// 3. DATACAT PROVIDER (Official Client API)
+// ==========================================
 const Datacat = {
-  id:'datacat',name:'Datacat',sorts:['fresh','popular'],
-  async search({query='',page=1,sort='fresh',tag=''}) {
-    const term=[query,tag].filter(Boolean).join(' ');
-    const endpoint=term?`https://datacat.run/api/client/v1/characters?search=${encodeURIComponent(term)}&page=${page}`:`https://datacat.run/api/client/v1/fresh?page=${page}`;
-    const d=await httpFetch(endpoint,{headers:{'X-Datacat-Client-Id':'datacat_client_v1'}});
-    const items=Array.isArray(d)?d:(d?.characters||d?.items||d?.nodes||d?.data||[]);
-    return Array.isArray(items)?items.map(c=>({source:'datacat',id:c.id,name:c.name||'Unnamed',creator:c.creator?.name||c.creator||'Datacat Creator',avatarUrl:`https://datacat.run/api/client/v1/characters/${c.id}/avatar`,tagline:c.summary||c.tagline||c.description?.slice(0,120)||'',tags:Array.isArray(c.tags)?c.tags:[],stats:{kudos:c.kudos||c.downloads||0,tokens:c.token_count||0}})):[];
+  apiBase: 'https://datacat.run',
+
+  async search({ query = '', page = 1, sort = 'fresh', tag = '' }) {
+    const term = [query, tag].filter(Boolean).join(' ');
+    const endpoint = term
+      ? `${this.apiBase}/api/client/v1/characters?search=${encodeURIComponent(term)}&page=${page}`
+      : `${this.apiBase}/api/client/v1/fresh?page=${page}`;
+
+    const data = await httpFetch(endpoint, {
+      headers: { 'X-Datacat-Client-Id': 'datacat_client_v1', 'Accept': 'application/json' }
+    });
+
+    const items = Array.isArray(data) ? data : (data?.characters || data?.items || data?.nodes || data?.data || []);
+
+    return {
+      characters: items.map(c => ({
+        id: c.id,
+        name: c.name || 'Unnamed',
+        creator: c.creator?.name || c.creator || 'Datacat Creator',
+        avatarUrl: `${this.apiBase}/api/client/v1/characters/${c.id}/avatar`,
+        tagline: c.summary || c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
+        tags: Array.isArray(c.tags) ? c.tags.slice(0, 4) : ['Datacat'],
+        downloads: c.kudos || c.downloads || 0,
+        stars: 0,
+        tokens: c.token_count || 0,
+        source: 'datacat'
+      }))
+    };
   },
-  async details(id){ const d=await httpFetch(`https://datacat.run/api/client/v1/characters/${id}/card`,{headers:{'X-Datacat-Client-Id':'datacat_client_v1'}}); const c=d?.data||d||{}; return {source:'datacat',id,name:c.name||'Unnamed',creator:c.creator||'Datacat Creator',avatarUrl:`https://datacat.run/api/client/v1/characters/${id}/avatar`,summary:c.creator_notes||c.description?.slice(0,240)||'',tags:c.tags||[],first_mes:c.first_mes||'',alternate_greetings:c.alternate_greetings||[],description:c.description||'',personality:c.personality||'',scenario:c.scenario||'',mes_example:c.mes_example||'',creator_notes:c.creator_notes||'',system_prompt:c.system_prompt||'',stats:{kudos:c.kudos||0,tokens:tokenEstimate((c.description||'')+(c.personality||'')+(c.first_mes||''))}}; },
-  async import(id){ return httpFetch(`https://datacat.run/api/client/v1/characters/${id}/card`,{headers:{'X-Datacat-Client-Id':'datacat_client_v1'}}); }
+
+  async getDetails(id) {
+    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card`, {
+      headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
+    });
+    const d = card?.data || card || {};
+
+    return {
+      id,
+      name: d.name || 'Datacat Character',
+      creator: d.creator || 'Datacat',
+      avatarUrl: `${this.apiBase}/api/client/v1/characters/${id}/avatar`,
+      webSummary: d.creator_notes || d.description?.slice(0, 140) || 'Datacat character definition.',
+      charDescription: d.description || 'Prompt definition encoded in card.',
+      personality: d.personality || 'Standard personality traits.',
+      scenario: d.scenario || 'No scenario defined.',
+      first_mes: d.first_mes || 'Ready for chat.',
+      alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
+      creator_notes: d.creator_notes || '',
+      system_prompt: d.system_prompt || '',
+      mes_example: d.mes_example || '',
+      tags: d.tags || ['Datacat'],
+      downloads: 0,
+      stars: 0,
+      totalTokens: approxTokens((d.description || '') + (d.personality || '') + (d.first_mes || '')),
+      source: 'datacat'
+    };
+  },
+
+  async fetchCard(id) {
+    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card`, {
+      headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
+    });
+    return { card };
+  }
 };
 
-const providers={chub:Chub,janny:JannyAI,datacat:Datacat};
-const normalize=(raw,source)=>raw?.data||raw||{};
+// --- IPC ROUTER ---
+const providers = { chub: Chub, janny: JanitorAI, datacat: Datacat };
 
-spindle.onFrontendMessage(async(msg,userId)=>{
-  const {action,provider='chub',payload={},requestId}=msg||{};
-  try{
-    const p=providers[provider]; if(!p)throw new Error(`Unknown provider: ${provider}`);
-    if(action==='SEARCH'){ const results=await p.search(payload); return spindle.sendToFrontend({type:'SEARCH_RESULT',requestId,results:{characters:results,source:provider}},userId); }
-    if(action==='GET_DETAILS'){ const details=await p.details(payload.id); return spindle.sendToFrontend({type:'DETAILS_RESULT',requestId,details},userId); }
-    if(action==='IMPORT'){ const raw=await p.import(payload.id); let name='Character'; if(raw?.rawPngBuffer){const x=await spindle.characters.importFile(raw.rawPngBuffer);name=x?.name||name;} else {const d=normalize(raw,provider); const x=await spindle.characters.create({name:d.name||'Imported Character',description:d.description||'',personality:d.personality||'',scenario:d.scenario||'',first_mes:d.first_mes||'',mes_example:d.mes_example||'',creator_notes:d.creator_notes||'',system_prompt:d.system_prompt||'',post_history_instructions:d.post_history_instructions||'',tags:Array.isArray(d.tags)?d.tags:[],alternate_greetings:Array.isArray(d.alternate_greetings)?d.alternate_greetings:[],creator:d.creator||p.name,extensions:{[EXT]:{source:provider,sourceId:payload.id,sourceName:p.name,sourceUrl:payload.url||''}}}); name=x?.name||d.name||name;} return spindle.sendToFrontend({type:'IMPORT_SUCCESS',requestId,characterName:name,source:provider},userId); }
-    throw new Error('Unknown action');
-  }catch(e){ spindle.sendToFrontend({type:'ERROR',requestId,error:e?.message||'Operation failed'},userId); }
+spindle.onFrontendMessage(async (msg, userId) => {
+  const { action, provider = 'chub', payload = {}, requestId } = msg || {};
+
+  try {
+    const current = providers[provider];
+    if (!current) throw new Error(`Unknown provider: ${provider}`);
+
+    if (action === 'SEARCH') {
+      const results = await current.search(payload);
+      spindle.sendToFrontend({ type: 'SEARCH_RESULT', requestId, results }, userId);
+      return;
+    }
+
+    if (action === 'GET_DETAILS') {
+      const details = await current.getDetails(payload.id);
+      spindle.sendToFrontend({ type: 'DETAILS_RESULT', requestId, details }, userId);
+      return;
+    }
+
+    if (action === 'IMPORT') {
+      const { id } = payload;
+      const cardPayload = await current.fetchCard(id);
+      let characterName = 'Character';
+
+      if (cardPayload.rawPngBuffer) {
+        const imported = await spindle.characters.importFile(cardPayload.rawPngBuffer);
+        characterName = imported?.name || characterName;
+      } else {
+        const raw = cardPayload.card?.data || cardPayload.card || {};
+        const charDto = {
+          name: raw.name || 'Imported Character',
+          description: raw.description || '',
+          personality: raw.personality || '',
+          scenario: raw.scenario || '',
+          first_mes: raw.first_mes || '',
+          mes_example: raw.mes_example || '',
+          creator_notes: raw.creator_notes || '',
+          system_prompt: raw.system_prompt || '',
+          post_history_instructions: raw.post_history_instructions || '',
+          tags: Array.isArray(raw.tags) ? raw.tags : (Array.isArray(raw.topics) ? raw.topics : []),
+          alternate_greetings: Array.isArray(raw.alternate_greetings) ? raw.alternate_greetings : [],
+          creator: raw.creator || 'Community'
+        };
+
+        const imported = await spindle.characters.create(charDto);
+        characterName = imported?.name || charDto.name;
+      }
+
+      spindle.sendToFrontend({ type: 'IMPORT_SUCCESS', requestId, characterName }, userId);
+    }
+  } catch (err) {
+    spindle.sendToFrontend({
+      type: 'ERROR',
+      requestId,
+      error: err.message || 'Operation failed'
+    }, userId);
+  }
 });
