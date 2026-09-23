@@ -3,13 +3,14 @@
   "name": "Omni Character Hub",
   "identifier": "omni_character_hub",
   "author": "Community",
-  "github": "https://github.com/yahooomega292-ai/omni-character-hub",
-  "homepage": "https://github.com/yahooomega292-ai/omni-character-hub",
-  "description": "A polished, SFW character-card browser and importer with independent source metadata, facets, deduplication, persistent preferences, and a clean library search experience.",
+  "github": "https://github.com/mramazo292/omni-character-hub",
+  "homepage": "https://github.com/mramazo292/omni-character-hub",
+  "description": "Browse, inspect and import characters independently from Chub.ai, Janny AI and Datacat.",
   "permissions": [
-    "characters"
+    "characters",
+    "cors_proxy"
   ],
   "entry_backend": "dist/backend.js",
   "entry_frontend": "dist/frontend.js",
-  "minimum_lumiverse_version": "1.0.0"
+  "minimum_lumiverse_version": "0.1.0"
 }
