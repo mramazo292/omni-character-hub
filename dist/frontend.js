@@ -1,14 +1,6 @@
 export function setup(ctx) {
-  // 1. Force purge any stray pinned button from previous versions
-  function cleanStrayButtons() {
-    document.querySelectorAll('#omni-topbar-rose-btn, .omni-topbar-pinned, [data-action="omni_open_rose"]').forEach(el => el.remove());
-    document.querySelectorAll('button').forEach(btn => {
-      if (btn.closest('.omni-root') || btn.closest('.drawer-tabs')) return;
-      if (btn.innerHTML.includes('#f43f5e') && btn.innerHTML.includes('12 13V22')) btn.remove();
-    });
-  }
-  cleanStrayButtons();
-  setTimeout(cleanStrayButtons, 500);
+  // Only remove the specific pinned button if it was left behind
+  document.getElementById('omni-topbar-rose-btn')?.remove();
 
   const roseSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none">
     <path d="M12 2C9.5 2 7 3.5 7 6.5C7 9.5 10 11.5 12 13C14 11.5 17 9.5 17 6.5C17 3.5 14.5 2 12 2Z" fill="#f43f5e" stroke="#e11d48" stroke-width="1.5"/>
@@ -48,7 +40,7 @@ export function setup(ctx) {
     }
   };
 
-  // Modern Clean Dark Theme (Enforces crisp system sans-serif font)
+  // Modern Clean Dark Theme (Enforces crisp sans-serif typography)
   ctx.dom.addStyle(`
     .omni-root, .omni-root * {
       font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif !important;
@@ -232,7 +224,7 @@ export function setup(ctx) {
     });
   }
 
-  // Register Native Drawer Tab
+  // 2. Register Native Drawer Tab (Placed directly in the top scroller)
   const tab = ctx.ui.registerDrawerTab({
     id: 'omni_rose_hub',
     title: 'Character Hub',
@@ -246,8 +238,8 @@ export function setup(ctx) {
   container.innerHTML = `
     <div class="omni-root">
       <!-- FULL IMAGE PREVIEW MODAL -->
-      <div class="omni-img-modal" id="omni-img-modal">
-        <button class="omni-btn" id="omni-img-modal-close" style="position:absolute; top:12px; right:12px; padding:6px 12px;">&times; Close</button>
+      <div class="omni-img-preview" id="omni-preview-modal">
+        <button class="omni-btn" id="omni-preview-close" style="position:absolute; top:12px; right:12px; padding:6px 12px;">&times; Close</button>
         <img id="omni-preview-img" />
         <span style="color:#64748b; font-size:0.75rem; margin-top:8px;">Tap anywhere to close</span>
       </div>
@@ -349,9 +341,9 @@ export function setup(ctx) {
   const activeTagLabel = container.querySelector('#omni-active-tag-label');
 
   // Image Modal Bindings
-  const imgModal = container.querySelector('#omni-img-modal');
+  const imgModal = container.querySelector('#omni-preview-modal');
   const previewImg = container.querySelector('#omni-preview-img');
-  const imgModalClose = container.querySelector('#omni-img-modal-close');
+  const imgModalClose = container.querySelector('#omni-preview-close');
 
   // Inspector Bindings
   const inspector = container.querySelector('#omni-inspector');
@@ -396,261 +388,4 @@ export function setup(ctx) {
     `).join('');
 
     tagGrid.querySelectorAll('.omni-modal-chip').forEach(chip => {
-      chip.onclick = (e) => {
-        selectedTag = e.target.getAttribute('data-val');
-        tagBtn.classList.add('active');
-        tagBtn.innerText = `🏷️ ${selectedTag}`;
-        activeTagLabel.innerText = `Active: ${selectedTag}`;
-        tagModal.classList.remove('open');
-        currentPage = 1;
-        loadCatalog();
-      };
-    });
-  }
-
-  tagSearchInput.addEventListener('input', (e) => {
-    renderTagChips(e.target.value.trim());
-  });
-
-  clearTagBtn.onclick = () => {
-    selectedTag = '';
-    tagBtn.classList.remove('active');
-    tagBtn.innerText = '🏷️ Tags';
-    activeTagLabel.innerText = 'Active: None';
-    tagModal.classList.remove('open');
-    currentPage = 1;
-    loadCatalog();
-  };
-
-  function updatePlatformControls() {
-    const cfg = PLATFORMS[currentSource];
-    sortSelect.innerHTML = cfg.sorts.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    currentSort = cfg.sorts[0].id;
-    selectedTag = '';
-    tagBtn.classList.remove('active');
-    tagBtn.innerText = '🏷️ Tags';
-    activeTagLabel.innerText = 'Active: None';
-  }
-
-  function renderSkeletons() {
-    grid.innerHTML = Array(6).fill(0).map(() => `<div class="omni-skeleton"></div>`).join('');
-  }
-
-  function renderInspectorTab(tabKey) {
-    if (!activeCharData) return;
-    const d = activeCharData;
-
-    if (tabKey === 'greetings') {
-      const altList = d.alternate_greetings || [];
-      detailBody.innerHTML = `
-        <div style="font-size:0.7rem; font-weight:700; color:#10b981; text-transform:uppercase;">Primary First Message</div>
-        <div class="omni-block" style="border-color:rgba(16,185,129,0.3);">${d.first_mes || 'No greeting defined.'}</div>
-
-        ${altList.length > 0 ? `
-          <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Alternate Greetings (${altList.length})</div>
-          ${altList.map((g, idx) => `
-            <div class="omni-block" style="border-color:rgba(244,63,94,0.2);">
-              <div style="font-size:0.65rem; font-weight:700; color:#fda4af; margin-bottom:4px;">Greeting #${idx + 2}</div>
-              ${g}
-            </div>
-          `).join('')}
-        ` : ''}
-
-        ${d.mes_example ? `
-          <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Example Dialogue</div>
-          <div class="omni-block">${d.mes_example}</div>
-        ` : ''}
-      `;
-    } else if (tabKey === 'definition') {
-      detailBody.innerHTML = `
-        <div style="font-size:0.7rem; font-weight:700; color:#10b981; text-transform:uppercase;">Prompt Definition</div>
-        <div class="omni-block">${d.charDescription || 'No prompt definition visible.'}</div>
-
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Personality</div>
-        <div class="omni-block">${d.personality || 'No personality definition visible.'}</div>
-
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Scenario</div>
-        <div class="omni-block">${d.scenario || 'No specific scenario.'}</div>
-      `;
-    } else if (tabKey === 'summary') {
-      detailBody.innerHTML = `
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase;">Catalog Summary</div>
-        <div class="omni-block">${d.webSummary || 'No summary provided.'}</div>
-
-        ${d.creator_notes ? `
-          <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Author Notes</div>
-          <div class="omni-block">${d.creator_notes}</div>
-        ` : ''}
-
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Tags</div>
-        <div style="display:flex; gap:4px; flex-wrap:wrap;">
-          ${(d.tags || []).map(t => `<span class="omni-modal-chip" style="font-size:0.65rem; padding:3px 8px;">${t}</span>`).join('')}
-        </div>
-      `;
-    } else if (tabKey === 'stats') {
-      detailBody.innerHTML = `
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase;">Specifications</div>
-        <div class="omni-block">
-          • Estimated Total Tokens: <b>${d.totalTokens ? d.totalTokens.toLocaleString() : 'N/A'}</b><br>
-          • Source: <b>${d.source.toUpperCase()}</b><br>
-          • Format: <b>Character Card V2 (CCv2)</b>
-        </div>
-      `;
-    }
-  }
-
-  container.querySelectorAll('.omni-subtab').forEach(btn => {
-    btn.onclick = (e) => {
-      container.querySelectorAll('.omni-subtab').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      activeTab = e.target.getAttribute('data-tab');
-      renderInspectorTab(activeTab);
-    };
-  });
-
-  async function openCharacterDetails(charId) {
-    activeCharId = charId;
-    inspector.classList.add('open');
-    detailName.innerText = 'Loading card...';
-    detailAuthor.innerText = '';
-    detailBody.innerHTML = '<div style="text-align:center; padding:30px; color:#64748b;">Decoding character card...</div>';
-
-    try {
-      const res = await callBackend('GET_DETAILS', { id: charId });
-      activeCharData = res.details;
-      detailThumb.src = activeCharData.avatarUrl;
-      detailName.innerText = activeCharData.name;
-      detailAuthor.innerText = `by ${activeCharData.creator} • ${activeCharData.source.toUpperCase()}`;
-      greetCountTxt.innerText = String(1 + (activeCharData.alternate_greetings ? activeCharData.alternate_greetings.length : 0));
-      renderInspectorTab(activeTab);
-    } catch (e) {
-      detailBody.innerHTML = `<div style="color:#f87171; padding:20px; text-align:center;">Failed to load: ${e.message}</div>`;
-    }
-  }
-
-  detailImport.onclick = async () => {
-    if (!activeCharId) return;
-    detailImport.disabled = true;
-    detailImport.innerText = 'Importing...';
-    try {
-      const res = await callBackend('IMPORT', { id: activeCharId });
-      detailImport.innerText = '✓ In Library';
-      alert(`Imported "${res.characterName}" successfully!`);
-    } catch (e) {
-      alert(`Import failed: ${e.message}`);
-      detailImport.innerText = 'Retry';
-      detailImport.disabled = false;
-    }
-  };
-
-  async function loadCatalog() {
-    renderSkeletons();
-    goBtn.disabled = true;
-    prevBtn.disabled = currentPage <= 1;
-
-    try {
-      if (input.value.startsWith('http')) {
-        const res = await callBackend('IMPORT', { id: input.value.trim() });
-        alert(`Successfully imported "${res.characterName}"!`);
-        input.value = '';
-        loadCatalog();
-        return;
-      }
-
-      const res = await callBackend('SEARCH', {
-        query: currentSearch,
-        sort: currentSort,
-        tag: selectedTag,
-        page: currentPage,
-        nsfw: includeNsfw
-      });
-
-      const chars = res.results.characters || [];
-      pageDisplay.innerText = `Page ${currentPage}`;
-
-      if (!chars.length) {
-        grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:#64748b;">No characters found matching your criteria.</div>';
-        return;
-      }
-
-      grid.innerHTML = chars.map(c => `
-        <div class="omni-card" data-id="${c.id}">
-          <div class="omni-thumb-wrap">
-            <img src="${c.avatarUrl}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2312141c%22/></svg>'"/>
-            <span class="omni-card-source">${c.source}</span>
-          </div>
-          <div class="omni-card-body">
-            <div>
-              <div class="omni-card-title">${c.name}</div>
-              <div class="omni-card-author">by ${c.creator}</div>
-            </div>
-            <div class="omni-card-meta">
-              <span>⬇️ ${c.downloads ? c.downloads.toLocaleString() : '0'}</span>
-              <span>${c.tokens ? c.tokens.toLocaleString() + ' tok' : ''}</span>
-            </div>
-          </div>
-        </div>
-      `).join('');
-
-      grid.querySelectorAll('.omni-card').forEach(card => {
-        card.onclick = () => {
-          const id = card.getAttribute('data-id');
-          openCharacterDetails(id);
-        };
-      });
-    } catch (err) {
-      grid.innerHTML = `<div style="grid-column:1/-1; color:#f43f5e; text-align:center; padding:20px;">${err.message}</div>`;
-    } finally {
-      goBtn.disabled = false;
-      prevBtn.disabled = currentPage <= 1;
-    }
-  }
-
-  // Event Listeners
-  sortSelect.onchange = (e) => {
-    currentSort = e.target.value;
-    currentPage = 1;
-    loadCatalog();
-  };
-
-  container.querySelectorAll('.omni-tab-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      container.querySelectorAll('.omni-tab-btn').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      currentSource = e.target.getAttribute('data-src');
-      currentPage = 1;
-      updatePlatformControls();
-      loadCatalog();
-    };
-  });
-
-  goBtn.onclick = () => {
-    currentSearch = input.value.trim();
-    currentPage = 1;
-    loadCatalog();
-  };
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') goBtn.click();
-  });
-
-  nsfwBox.onchange = (e) => {
-    includeNsfw = e.target.checked;
-    loadCatalog();
-  };
-
-  prevBtn.onclick = () => {
-    if (currentPage > 1) {
-      currentPage--;
-      loadCatalog();
-    }
-  };
-
-  nextBtn.onclick = () => {
-    currentPage++;
-    loadCatalog();
-  };
-
-  updatePlatformControls();
-  loadCatalog();
-}
+      chip
