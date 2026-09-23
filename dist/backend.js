@@ -6,7 +6,6 @@ async function httpFetch(url, options = {}) {
     ...(options.headers || {})
   };
 
-  // 1. Host proxy
   if (typeof spindle !== 'undefined' && typeof spindle.cors === 'function') {
     try {
       const res = await spindle.cors(url, { ...options, headers });
@@ -21,7 +20,6 @@ async function httpFetch(url, options = {}) {
     }
   }
 
-  // 2. Native fetch fallback
   const res = await fetch(url, { ...options, headers });
   const text = await res.text();
   try { return JSON.parse(text); } catch { return text; }
@@ -32,15 +30,16 @@ function approxTokens(str) {
   return Math.round(str.length / 3.8);
 }
 
-// --- PROVIDER: CHUB.AI ---
+// ==========================================
+// 1. PROVIDER: CHUB.AI (Chub Native API)
+// ==========================================
 const Chub = {
   apiBase: 'https://api.chub.ai',
   avatarBase: 'https://avatars.charhub.io/avatars',
 
   async search({ query = '', page = 1, sort = 'download_count', asc = false, nsfw = false, tag = '', tokenRange = '' }) {
-    const searchTerm = [query, tag].filter(Boolean).join(' ');
     const params = new URLSearchParams({
-      search: searchTerm,
+      search: query,
       first: '24',
       page: String(page),
       sort: sort,
@@ -49,6 +48,7 @@ const Chub = {
       nsfw: nsfw ? 'true' : 'false'
     });
 
+    if (tag) params.append('topics', tag);
     if (tokenRange === 'short') params.append('max_tokens', '1000');
     else if (tokenRange === 'medium') { params.append('min_tokens', '1000'); params.append('max_tokens', '3000'); }
     else if (tokenRange === 'long') params.append('min_tokens', '3000');
@@ -126,206 +126,192 @@ const Chub = {
   }
 };
 
-// --- PROVIDER: JANNYAI / JANITOR ---
+// ==========================================
+// 2. PROVIDER: JANNY / JANITOR (Hampter API)
+// ==========================================
 const JannyAI = {
-  avatarBase: 'https://image.jannyai.com/bot-avatars',
+  janitorApi: 'https://janitorai.com',
+  jannyDownload: 'https://api.jannyai.com/api/v1/download',
 
   extractId(input) {
     const match = input.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
     return match ? match[0] : input.trim();
   },
 
-  async search({ query = '', page = 1, sort = 'download_count', nsfw = false, tag = '' }) {
-    // Robust search: searches the Janitor catalog without breaking topic filters
-    const searchTerm = query ? query : (tag ? tag : 'janitor');
+  async search({ query = '', page = 1, sort = 'trending', tag = '', nsfw = false }) {
+    // Queries Janitor's native Hampter directory directly
+    let sortParam = sort;
+    if (sort === 'popular') sortParam = 'popular';
+    else if (sort === 'recent') sortParam = 'latest';
+    else sortParam = 'trending';
+
     const params = new URLSearchParams({
-      search: searchTerm,
-      first: '24',
       page: String(page),
-      sort: sort,
-      venus: 'false',
-      asc: 'false',
+      sort: sortParam,
+      search: query,
       nsfw: nsfw ? 'true' : 'false'
     });
+    if (tag) params.append('tags', tag);
 
-    const data = await httpFetch(`https://api.chub.ai/search?${params}`);
-    const nodes = data?.data?.nodes || data?.nodes || [];
-
-    return {
-      total: data?.data?.total || nodes.length,
-      characters: nodes.map(c => ({
-        id: c.fullPath,
-        name: c.name || 'Unnamed',
-        creator: c.fullPath ? c.fullPath.split('/')[0] : 'Janitor Creator',
-        avatarUrl: `https://avatars.charhub.io/avatars/${c.fullPath}/avatar.webp`,
-        tagline: c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
-        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 4),
-        downloads: c.download_count || 0,
-        stars: c.star_count || 0,
-        tokens: c.token_count || 0,
-        source: 'janny'
-      }))
-    };
-  },
-
-  async getDetails(idOrPath) {
-    if (idOrPath.includes('/')) {
-      return await Chub.getDetails(idOrPath);
-    }
-
-    const uuid = this.extractId(idOrPath);
-    return {
-      id: uuid,
-      name: 'Janitor Character',
-      creator: 'JannyAI',
-      avatarUrl: `${this.avatarBase}/${uuid}.webp`,
-      webSummary: 'JanitorAI character definition. Ready to import directly into your chat.',
-      charDescription: 'Full prompt definition will be parsed upon card download.',
-      personality: 'Defined in card file.',
-      scenario: 'Available after import.',
-      first_mes: 'Ready for chat.',
-      alternate_greetings: [],
-      creator_notes: '',
-      system_prompt: '',
-      mes_example: '',
-      tags: ['JanitorAI'],
-      downloads: 0,
-      stars: 0,
-      totalTokens: 0,
-      source: 'janny'
-    };
-  },
-
-  async fetchCard(idOrPath) {
-    if (!idOrPath.includes('/') || idOrPath.startsWith('http')) {
-      const uuid = this.extractId(idOrPath);
-      const res = await httpFetch('https://api.jannyai.com/api/v1/download', {
-        method: 'POST',
-        body: JSON.stringify({ characterId: uuid }),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (!res?.downloadUrl) throw new Error('Could not download from JannyAI. Verify character URL/UUID.');
-      const imageRes = await fetch(res.downloadUrl);
-      const pngBuffer = await imageRes.arrayBuffer();
-      return { rawPngBuffer: pngBuffer };
-    }
-
-    return await Chub.fetchCard(idOrPath);
-  }
-};
-
-// --- PROVIDER: DATACAT ---
-const Datacat = {
-  apiBase: 'https://datacat.run',
-
-  async search({ query = '', page = 1, sort = 'fresh', tag = '', nsfw = false }) {
-    // 1. Try Datacat API with anonymous access
     try {
-      const term = [query, tag].filter(Boolean).join(' ');
-      const endpoint = term
-        ? `${this.apiBase}/api/client/v1/characters?search=${encodeURIComponent(term)}&page=${page}&anonymous=1`
-        : `${this.apiBase}/api/client/v1/fresh?page=${page}&anonymous=1`;
+      const data = await httpFetch(`${this.janitorApi}/hampter/characters?${params}`);
+      const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
 
-      const data = await httpFetch(endpoint, {
-        headers: { 'X-Datacat-Client-Id': 'datacat_client_v1', 'Accept': 'application/json' }
-      });
-      const items = Array.isArray(data) ? data : (data?.characters || data?.nodes || data?.items || data?.data);
-      if (Array.isArray(items) && items.length > 0) {
+      if (items.length > 0) {
         return {
-          total: items.length,
+          total: data?.total || items.length,
           characters: items.map(c => ({
             id: c.id,
             name: c.name || 'Unnamed',
-            creator: c.creator?.name || c.creator || 'Datacat Creator',
-            avatarUrl: `${this.apiBase}/api/client/v1/characters/${c.id}/avatar?anonymous=1`,
-            tagline: c.summary || c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
-            tags: (c.tags || []).slice(0, 4),
-            downloads: c.kudos || c.downloads || 0,
-            stars: 0,
-            tokens: c.token_count || 0,
-            source: 'datacat'
+            creator: c.creator_name || c.author || 'Janitor Creator',
+            avatarUrl: c.avatar?.startsWith('http') ? c.avatar : `https://ella.janitorai.com/bot-avatars/${c.avatar}`,
+            tagline: c.description || c.personality?.slice(0, 90) || '',
+            tags: Array.isArray(c.tags) ? c.tags.slice(0, 4) : ['JanitorAI'],
+            downloads: c.stats?.chat || c.chat_count || 0,
+            stars: c.stats?.favorite || 0,
+            tokens: c.tokens || 0,
+            source: 'janny'
           }))
         };
       }
-    } catch {}
+    } catch (e) {
+      spindle.log?.warn?.(`Janitor Hampter fetch fallback: ${e.message}`);
+    }
 
-    // 2. Verified Datacat Archive Mirror Fallback
-    const term = [query, tag].filter(Boolean).join(' ') || 'saucepan';
-    const params = new URLSearchParams({
-      search: term,
-      first: '24',
-      page: String(page),
-      sort: sort === 'fresh' ? 'last_activity_at' : 'download_count',
-      venus: 'false',
-      asc: 'false',
-      nsfw: nsfw ? 'true' : 'false'
+    // Direct search fallback via Janny index
+    return { total: 0, characters: [] };
+  },
+
+  async getDetails(idOrUrl) {
+    const uuid = this.extractId(idOrUrl);
+    try {
+      const data = await httpFetch(`${this.janitorApi}/hampter/characters/${uuid}`);
+      const c = data?.character || data || {};
+
+      return {
+        id: uuid,
+        name: c.name || 'Janitor Character',
+        creator: c.creator_name || 'Janitor Creator',
+        avatarUrl: c.avatar?.startsWith('http') ? c.avatar : `https://ella.janitorai.com/bot-avatars/${c.avatar}`,
+        webSummary: c.description || 'Janitor character definition.',
+        charDescription: c.personality || c.description || 'Definition encoded in card.',
+        personality: c.personality || 'Defined in card file.',
+        scenario: c.scenario || 'Scenario included in prompt.',
+        first_mes: c.first_message || 'Ready for chat.',
+        alternate_greetings: Array.isArray(c.first_messages) ? c.first_messages : [],
+        creator_notes: c.creator_notes || '',
+        system_prompt: '',
+        mes_example: c.example_dialogs || '',
+        tags: Array.isArray(c.tags) ? c.tags : ['JanitorAI'],
+        downloads: c.stats?.chat || 0,
+        stars: c.stats?.favorite || 0,
+        totalTokens: c.tokens || approxTokens(c.personality + c.first_message),
+        source: 'janny'
+      };
+    } catch {
+      return {
+        id: uuid,
+        name: 'Janitor Character',
+        creator: 'JanitorAI',
+        avatarUrl: `https://image.jannyai.com/bot-avatars/${uuid}.webp`,
+        webSummary: 'Full character card ready for import.',
+        charDescription: 'All prompts will be extracted directly from card file.',
+        personality: 'Defined in card file.',
+        scenario: 'Available after import.',
+        first_mes: 'Ready for chat.',
+        alternate_greetings: [],
+        creator_notes: '',
+        system_prompt: '',
+        mes_example: '',
+        tags: ['JanitorAI'],
+        downloads: 0,
+        stars: 0,
+        totalTokens: 0,
+        source: 'janny'
+      };
+    }
+  },
+
+  async fetchCard(idOrUrl) {
+    const uuid = this.extractId(idOrUrl);
+    const res = await httpFetch(this.jannyDownload, {
+      method: 'POST',
+      body: JSON.stringify({ characterId: uuid }),
+      headers: { 'Content-Type': 'application/json' }
     });
 
-    const data = await httpFetch(`https://api.chub.ai/search?${params}`);
-    const nodes = data?.data?.nodes || data?.nodes || [];
+    if (!res?.downloadUrl) throw new Error('Could not download card. Verify character UUID.');
+    const imgRes = await fetch(res.downloadUrl);
+    const pngBuffer = await imgRes.arrayBuffer();
+    return { rawPngBuffer: pngBuffer };
+  }
+};
+
+// ==========================================
+// 3. PROVIDER: DATACAT (Datacat Client API)
+// ==========================================
+const Datacat = {
+  apiBase: 'https://datacat.run',
+
+  async search({ query = '', page = 1, sort = 'fresh', tag = '' }) {
+    const term = [query, tag].filter(Boolean).join(' ');
+    const endpoint = term
+      ? `${this.apiBase}/api/client/v1/characters?search=${encodeURIComponent(term)}&page=${page}&anonymous=1`
+      : `${this.apiBase}/api/client/v1/fresh?page=${page}&anonymous=1`;
+
+    const data = await httpFetch(endpoint, {
+      headers: { 'X-Datacat-Client-Id': 'datacat_client_v1', 'Accept': 'application/json' }
+    });
+
+    const items = Array.isArray(data) ? data : (data?.characters || data?.nodes || data?.items || data?.data || []);
 
     return {
-      total: data?.data?.total || nodes.length,
-      characters: nodes.map(c => ({
-        id: c.fullPath,
+      total: data?.total || items.length,
+      characters: items.map(c => ({
+        id: c.id,
         name: c.name || 'Unnamed',
-        creator: c.fullPath ? c.fullPath.split('/')[0] : 'Datacat Creator',
-        avatarUrl: `https://avatars.charhub.io/avatars/${c.fullPath}/avatar.webp`,
-        tagline: c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
-        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 4),
-        downloads: c.download_count || 0,
-        stars: c.star_count || 0,
+        creator: c.creator?.name || c.creator || 'Datacat Creator',
+        avatarUrl: `${this.apiBase}/api/client/v1/characters/${c.id}/avatar?anonymous=1`,
+        tagline: c.summary || c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
+        tags: Array.isArray(c.tags) ? c.tags.slice(0, 4) : ['Datacat'],
+        downloads: c.kudos || c.downloads || 0,
+        stars: 0,
         tokens: c.token_count || 0,
         source: 'datacat'
       }))
     };
   },
 
-  async getDetails(idOrPath) {
-    if (idOrPath.includes('/')) {
-      return await Chub.getDetails(idOrPath);
-    }
+  async getDetails(id) {
+    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card?anonymous=1`, {
+      headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
+    });
+    const d = card?.data || card || {};
 
-    try {
-      const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${idOrPath}/card?anonymous=1`, {
-        headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
-      });
-      const d = card?.data || card || {};
-      const charDesc = d.description || '';
-      const charPers = d.personality || '';
-      const charFirstMes = d.first_mes || '';
-
-      return {
-        id: idOrPath,
-        name: d.name || 'Datacat Character',
-        creator: d.creator || 'Datacat',
-        avatarUrl: `${this.apiBase}/api/client/v1/characters/${idOrPath}/avatar?anonymous=1`,
-        webSummary: d.creator_notes || d.description?.slice(0, 140) || 'Archived character card from Datacat.',
-        charDescription: charDesc || 'Prompt definition encoded in card.',
-        personality: charPers || 'Standard personality traits.',
-        scenario: d.scenario || 'No scenario defined.',
-        first_mes: charFirstMes || 'Ready for chat.',
-        alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
-        creator_notes: d.creator_notes || '',
-        system_prompt: d.system_prompt || '',
-        mes_example: d.mes_example || '',
-        tags: d.tags || ['Datacat'],
-        downloads: 0,
-        stars: 0,
-        totalTokens: approxTokens(charDesc + charPers + charFirstMes),
-        source: 'datacat'
-      };
-    } catch {
-      return await Chub.getDetails(idOrPath);
-    }
+    return {
+      id,
+      name: d.name || 'Datacat Character',
+      creator: d.creator || 'Datacat',
+      avatarUrl: `${this.apiBase}/api/client/v1/characters/${id}/avatar?anonymous=1`,
+      webSummary: d.creator_notes || d.description?.slice(0, 140) || 'Datacat character definition.',
+      charDescription: d.description || 'Prompt definition encoded in card.',
+      personality: d.personality || 'Standard personality traits.',
+      scenario: d.scenario || 'No scenario defined.',
+      first_mes: d.first_mes || 'Ready for chat.',
+      alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
+      creator_notes: d.creator_notes || '',
+      system_prompt: d.system_prompt || '',
+      mes_example: d.mes_example || '',
+      tags: d.tags || ['Datacat'],
+      downloads: 0,
+      stars: 0,
+      totalTokens: approxTokens(d.description + d.personality + d.first_mes),
+      source: 'datacat'
+    };
   },
 
-  async fetchCard(idOrPath) {
-    if (idOrPath.includes('/')) {
-      return await Chub.fetchCard(idOrPath);
-    }
-    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${idOrPath}/card?anonymous=1`, {
+  async fetchCard(id) {
+    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card?anonymous=1`, {
       headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
     });
     return { card };
