@@ -1,686 +1,520 @@
 export function setup(ctx) {
-  const roseSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none">
-    <path d="M12 2C9.5 2 7 3.5 7 6.5C7 9.5 10 11.5 12 13C14 11.5 17 9.5 17 6.5C17 3.5 14.5 2 12 2Z" fill="#f43f5e" stroke="#e11d48" stroke-width="1.5"/>
-    <path d="M10 5C11 4 13 4 14 5C15 6.5 14.5 8 13.5 9C12.5 10 11.5 10 10.5 9C9.5 8 9 6.5 10 5Z" fill="#be123c"/>
-    <path d="M12 13V22" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-    <path d="M12 17C10 15 7 16 6 18C7.5 18.5 9.5 18 12 17Z" fill="#059669"/>
-    <path d="M12 15C14 13.5 17 14 18 16C16.5 16.5 14.5 16 12 15Z" fill="#059669"/>
-  </svg>`;
+  const EXTENSION_ID = 'omni_character_hub';
 
-  const PLATFORMS = {
-    chub: {
-      name: 'Chub.ai',
-      sorts: [
-        { id: 'download_count', name: '🔥 Most Popular' },
-        { id: 'star_count', name: '⭐ Top Rated' },
-        { id: 'last_activity_at', name: '✨ Recently Active' },
-        { id: 'created_at', name: '📅 Newly Added' }
-      ],
-      tags: ['Anime', 'RPG', 'Female', 'Male', 'Romance', 'Fantasy', 'Dominant', 'Submissive', 'Yandere', 'Monster Girl', 'Sci-Fi', 'Horror', 'Smut', 'Slice of Life', 'Comedy', 'Mystery', 'Superhero', 'Villain']
-    },
-    janny: {
-      name: 'JanitorAI',
-      sorts: [
-        { id: 'trending', name: '🔥 Trending Now' },
-        { id: 'popular', name: '👑 All-Time Popular' },
-        { id: 'recent', name: '✨ Newly Added' }
-      ],
-      tags: ['AnyPOV', 'MalePOV', 'FemPOV', 'Enemies to Lovers', 'Dead Dove', 'Slow Burn', 'Angst', 'Fluff', 'Smut', 'Monster', 'Royalty', 'Mafia', 'Supernatural', 'College', 'Vampire', 'Step-sibling']
-    },
-    datacat: {
-      name: 'Datacat',
-      sorts: [
-        { id: 'fresh', name: '🌱 Fresh Catalog' },
-        { id: 'popular', name: '🔥 Top Kudos' }
-      ],
-      tags: ['Janitor', 'Saucepan', 'OC', 'RPG', 'NSFW', 'Fluff', 'Angst', 'Romance', 'Fantasy', 'Modern', 'Sci-Fi']
-    }
+  const icon = (name, size=18) => {
+    const paths = {
+      grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+      search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 5 5"/>',
+      sliders: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="11" cy="18" r="2"/>',
+      heart: '<path d="M20.8 8.7c0 5.1-8.8 10.3-8.8 10.3S3.2 13.8 3.2 8.7A5 5 0 0 1 12 6a5 5 0 0 1 8.8 2.7Z"/>',
+      import: '<path d="M12 3v11"/><path d="m7 9 5 5 5-5"/><path d="M4 20h16"/>',
+      tag: '<path d="M20 13 13 20l-9-9V4h7l9 9Z"/><circle cx="8" cy="8" r="1.4"/>',
+      settings: '<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m19.4 15 .1.1-1.8 3.1-.2-.1-2-.8a7.5 7.5 0 0 1-1.5.9L13.8 20h-3.6l-.3-1.8a7.5 7.5 0 0 1-1.5-.9l-2 .8-.2.1-1.8-3.1.1-.1 1.5-1.4a7.2 7.2 0 0 1 0-1.8l-1.5-1.4-.1-.1 1.8-3.1.2.1 2 .8a7.5 7.5 0 0 1 1.5-.9L10.2 4h3.6l.3 1.8a7.5 7.5 0 0 1 1.5.9l2-.8.2-.1 1.8 3.1-.1.1-1.5 1.4a7.2 7.2 0 0 1 0 1.8l1.5 1.4Z"/>',
+      x: '<path d="m5 5 14 14M19 5 5 19"/>',
+      chevron: '<path d="m9 18 6-6-6-6"/>',
+      star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 18.3 6.4 21l1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
+      back: '<path d="M19 12H5"/><path d="m11 18-6-6 6-6"/>'
+    };
+    return `<svg class="omni-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || ''}</svg>`;
   };
 
-  // Modern Clean Dark Theme (Forces clean sans-serif typography)
-  ctx.dom.addStyle(`
-    .omni-root, .omni-root * {
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif !important;
-      box-sizing: border-box;
-    }
-    .omni-root {
-      display: flex; flex-direction: column; height: 100%; padding: 8px; gap: 8px;
-      background: #090a0f; color: #f1f5f9; position: relative; overflow: hidden;
-    }
-
-    /* Pinned Topbar Button (Next to Settings) */
-    .omni-topbar-pinned {
-      display: inline-flex; align-items: center; justify-content: center;
-      background: transparent; border: none; cursor: pointer; padding: 6px 10px;
-      color: inherit; transition: opacity 0.2s;
-    }
-    .omni-topbar-pinned:hover { opacity: 0.8; }
-
-    /* Segmented Platform Tabs */
-    .omni-nav-tabs {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
-      background: #12141c; padding: 3px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    .omni-tab-btn {
-      padding: 6px 2px; font-size: 0.75rem; font-weight: 600; border: none;
-      background: transparent; color: #94a3b8; border-radius: 6px; cursor: pointer;
-      transition: all 0.15s ease; text-align: center;
-    }
-    .omni-tab-btn.active {
-      background: #e11d48; color: #fff; box-shadow: 0 2px 8px rgba(225, 29, 72, 0.35);
-    }
-
-    /* Compact Search & Action Bar */
-    .omni-bar-row { display: flex; gap: 6px; align-items: center; }
-    .omni-input-box {
-      flex: 1; display: flex; align-items: center; background: #12141c;
-      border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 0 8px;
-    }
-    .omni-input-box input {
-      width: 100%; padding: 7px 0; font-size: 0.78rem; border: none;
-      background: transparent; color: #fff; outline: none;
-    }
-    .omni-btn {
-      padding: 7px 12px; font-size: 0.75rem; font-weight: 600; border-radius: 8px;
-      border: none; background: #e11d48; color: #fff; cursor: pointer; white-space: nowrap;
-    }
-    .omni-btn-secondary {
-      padding: 7px 10px; font-size: 0.75rem; font-weight: 600; border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.08); background: #12141c; color: #94a3b8; cursor: pointer;
-      display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
-    }
-    .omni-btn-secondary.active { border-color: #e11d48; color: #fda4af; background: rgba(225, 29, 72, 0.15); }
-
-    /* Compact Sort Strip */
-    .omni-strip {
-      display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem;
-    }
-    .omni-select {
-      background: #12141c; border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #cbd5e1; padding: 4px 8px; border-radius: 6px; font-size: 0.72rem; outline: none;
-    }
-
-    /* Dedicated Tag Search Modal */
-    .omni-tag-modal {
-      position: absolute; inset: 0; background: #090a0f; z-index: 60; display: none;
-      flex-direction: column; padding: 12px; gap: 10px; box-sizing: border-box;
-    }
-    .omni-tag-modal.open { display: flex; }
-    .omni-tag-grid {
-      flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
-    }
-    .omni-modal-chip {
-      padding: 6px 12px; font-size: 0.75rem; border-radius: 20px;
-      background: #12141c; color: #94a3b8; border: 1px solid rgba(255,255,255,0.06); cursor: pointer;
-    }
-    .omni-modal-chip.active { background: #e11d48; color: #fff; border-color: #e11d48; }
-
-    /* 2-Column Responsive Card Grid (1:1.3 ratio) */
-    .omni-grid {
-      flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(2, 1fr);
-      gap: 8px; padding-right: 2px;
-    }
-    .omni-card {
-      background: #12141c; border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer;
-      transition: transform 0.12s ease, border-color 0.12s ease;
-    }
-    .omni-card:hover { border-color: rgba(225, 29, 72, 0.4); transform: translateY(-2px); }
-    .omni-thumb-wrap { position: relative; width: 100%; aspect-ratio: 1 / 1.25; background: #0b0d13; }
-    .omni-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; }
-    .omni-card-source {
-      position: absolute; top: 4px; left: 4px; padding: 2px 5px; font-size: 0.55rem;
-      font-weight: 700; text-transform: uppercase; border-radius: 4px; background: rgba(0,0,0,0.75);
-    }
-    .omni-card-body { padding: 6px; display: flex; flex-direction: column; flex: 1; justify-content: space-between; gap: 2px; }
-    .omni-card-title { font-size: 0.78rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .omni-card-author { font-size: 0.65rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .omni-card-meta { display: flex; justify-content: space-between; font-size: 0.62rem; color: #94a3b8; margin-top: 2px; }
-
-    /* Shimmer Skeleton */
-    .omni-skeleton {
-      background: #12141c; border-radius: 8px; aspect-ratio: 1 / 1.4; overflow: hidden; position: relative;
-    }
-    .omni-skeleton::after {
-      content: ""; position: absolute; inset: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-      animation: omniShimmer 1.2s infinite;
-    }
-    @keyframes omniShimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-
-    /* Contained Character Inspector */
-    .omni-inspector {
-      position: absolute; inset: 0; background: #090a0f; z-index: 50; display: flex;
-      flex-direction: column; transform: translateX(100%); transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-      overflow: hidden;
-    }
-    .omni-inspector.open { transform: translateX(0); }
-    .omni-inspector-top {
-      padding: 8px 10px; display: flex; gap: 8px; align-items: center;
-      background: #12141c; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
-    }
-    .omni-inspector-thumb {
-      width: 42px; height: 42px; border-radius: 6px; object-fit: cover;
-      cursor: pointer; border: 1px solid rgba(225, 29, 72, 0.4); flex-shrink: 0;
-    }
-    .omni-inspector-subtabs {
-      display: flex; gap: 4px; padding: 6px 10px; background: #0b0d13;
-      border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; overflow-x: auto; scrollbar-width: none;
-    }
-    .omni-subtab {
-      padding: 5px 8px; font-size: 0.7rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);
-      background: #12141c; color: #94a3b8; cursor: pointer; white-space: nowrap;
-    }
-    .omni-subtab.active { background: #e11d48; color: #fff; border-color: #e11d48; font-weight: 600; }
-    .omni-inspector-body {
-      flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px;
-    }
-    .omni-block {
-      background: #12141c; border: 1px solid rgba(255, 255, 255, 0.05);
-      padding: 8px 10px; border-radius: 6px; font-size: 0.75rem; line-height: 1.45; color: #cbd5e1;
-      white-space: pre-wrap; word-break: break-word;
-    }
-
-    /* Centered Image Viewer */
-    .omni-img-modal {
-      position: absolute; inset: 0; background: rgba(0, 0, 0, 0.95); z-index: 100; display: none;
-      align-items: center; justify-content: center; flex-direction: column; padding: 12px; box-sizing: border-box;
-    }
-    .omni-img-modal.open { display: flex; }
-    .omni-img-modal img { max-width: 95%; max-height: 80%; object-fit: contain; border-radius: 8px; }
-
-    /* Footer Pagination */
-    .omni-pager {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 4px 2px 0 2px; border-top: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
-    }
-    .omni-pager-btn {
-      padding: 4px 8px; font-size: 0.7rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);
-      background: #12141c; color: #fff; cursor: pointer;
-    }
-    .omni-pager-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  const style = ctx.dom.addStyle(`
+    .omni-v2, .omni-v2 * { box-sizing:border-box; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .omni-v2 { --bg:#0a0b10; --panel:#10121a; --panel2:#151824; --line:rgba(255,255,255,.08); --muted:#8d96aa; --text:#f7f8fb; --accent:#7c5cff; --accent2:#9c8aff; width:100%; height:100%; color:var(--text); background:radial-gradient(1200px 600px at 0% -20%,rgba(124,92,255,.15),transparent 45%),radial-gradient(1000px 500px at 100% 0%,rgba(44,211,153,.08),transparent 40%),var(--bg); }
+    .omni-shell { display:grid; grid-template-rows:auto auto 1fr; height:100%; min-height:0; }
+    .omni-top { padding:14px 16px 10px; border-bottom:1px solid var(--line); background:rgba(8,9,13,.7); backdrop-filter:blur(14px); position:sticky; top:0; z-index:5; }
+    .omni-brand { display:flex; align-items:center; gap:11px; }
+    .omni-logo { width:34px; height:34px; border-radius:12px; display:grid; place-items:center; background:linear-gradient(135deg,#7c5cff,#c6baff); color:#fff; box-shadow:0 8px 24px rgba(124,92,255,.28); }
+    .omni-title { font-size:16px; font-weight:800; letter-spacing:-.02em; }
+    .omni-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+    .omni-top-actions { margin-left:auto; display:flex; gap:6px; }
+    .omni-btn-icon { width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--muted); display:grid; place-items:center; cursor:pointer; }
+    .omni-btn-icon:hover { color:var(--text); border-color:rgba(124,92,255,.4); background:rgba(124,92,255,.08); }
+    .omni-toolbar { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:8px; flex-wrap:wrap; background:rgba(10,11,16,.85); }
+    .omni-search { flex:1 1 280px; min-width:180px; display:flex; align-items:center; gap:8px; padding:0 11px; border:1px solid var(--line); border-radius:12px; background:var(--panel); }
+    .omni-search:focus-within { border-color:rgba(124,92,255,.65); box-shadow:0 0 0 3px rgba(124,92,255,.12); }
+    .omni-search input { width:100%; height:38px; background:transparent; color:var(--text); border:0; outline:none; font-size:13px; }
+    .omni-control { height:38px; padding:0 11px; border:1px solid var(--line); border-radius:11px; background:var(--panel); color:var(--text); cursor:pointer; display:inline-flex; gap:7px; align-items:center; font-size:12px; }
+    .omni-control:hover { border-color:rgba(124,92,255,.45); }
+    .omni-control.primary { background:linear-gradient(135deg,#7c5cff,#6d4bf0); border-color:transparent; color:#fff; font-weight:700; }
+    .omni-main { min-height:0; display:grid; grid-template-columns:1fr; }
+    .omni-library { min-height:0; overflow:auto; padding:14px 16px 18px; }
+    .omni-meta-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .omni-pill { padding:5px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); background:rgba(255,255,255,.02); font-size:10px; }
+    .omni-spacer { flex:1; }
+    .omni-segment { display:inline-flex; padding:2px; border:1px solid var(--line); background:var(--panel); border-radius:10px; }
+    .omni-segment button { border:0; background:transparent; color:var(--muted); padding:6px 9px; font-size:10px; border-radius:7px; cursor:pointer; }
+    .omni-segment button.active { background:rgba(124,92,255,.18); color:#fff; }
+    .omni-grid { display:grid; gap:12px; grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .omni-grid.list { grid-template-columns:1fr; }
+    .omni-card { overflow:hidden; border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.012)); border-radius:16px; cursor:pointer; transition:.16s transform,.16s border-color,.16s box-shadow; }
+    .omni-card:hover { transform:translateY(-2px); border-color:rgba(124,92,255,.35); box-shadow:0 14px 40px rgba(0,0,0,.25); }
+    .omni-card-cover { aspect-ratio:4/5; background:linear-gradient(135deg,#161922,#0c0d12); position:relative; overflow:hidden; }
+    .omni-card-cover img { width:100%; height:100%; object-fit:cover; display:block; }
+    .omni-source { position:absolute; top:8px; left:8px; padding:5px 8px; background:rgba(6,7,10,.78); border:1px solid rgba(255,255,255,.08); border-radius:99px; font-size:9px; color:#e6e8ef; backdrop-filter:blur(8px); }
+    .omni-fav { position:absolute; top:7px; right:7px; width:29px; height:29px; border-radius:9px; border:1px solid rgba(255,255,255,.08); background:rgba(6,7,10,.72); color:#b1b7c5; display:grid; place-items:center; cursor:pointer; }
+    .omni-fav.active { color:#ffd36b; }
+    .omni-body { padding:10px; }
+    .omni-name { font-size:13px; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .omni-creator { color:var(--muted); font-size:10px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .omni-tags { display:flex; gap:5px; flex-wrap:wrap; margin-top:8px; }
+    .omni-tag { padding:4px 6px; font-size:9px; color:#c7cce0; border:1px solid var(--line); border-radius:7px; background:rgba(255,255,255,.025); cursor:pointer; }
+    .omni-tag:hover { border-color:rgba(124,92,255,.45); color:#fff; }
+    .omni-stats { display:flex; gap:10px; margin-top:9px; color:#778096; font-size:9px; }
+    .omni-empty { border:1px dashed var(--line); border-radius:16px; padding:40px 20px; text-align:center; color:var(--muted); }
+    .omni-empty strong { display:block; color:#fff; font-size:14px; margin-bottom:6px; }
+    .omni-loadmore { display:flex; justify-content:center; padding:16px 0 4px; }
+    .omni-drawer { position:fixed; inset:0; background:rgba(4,5,8,.68); backdrop-filter:blur(10px); z-index:30; display:none; }
+    .omni-drawer.open { display:block; }
+    .omni-panel { position:absolute; right:0; top:0; height:100%; width:min(520px,96vw); background:#0d0f16; border-left:1px solid var(--line); display:flex; flex-direction:column; }
+    .omni-panel-header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center; }
+    .omni-panel-body { padding:16px; overflow:auto; }
+    .omni-detail-hero { display:grid; grid-template-columns:92px 1fr; gap:12px; align-items:start; }
+    .omni-detail-avatar { width:92px; height:116px; border-radius:14px; object-fit:cover; border:1px solid var(--line); background:#12141a; }
+    .omni-detail-name { font-size:20px; font-weight:900; line-height:1.05; }
+    .omni-detail-creator { color:var(--muted); font-size:11px; margin-top:5px; }
+    .omni-detail-actions { display:flex; gap:7px; margin-top:12px; flex-wrap:wrap; }
+    .omni-section { margin-top:18px; }
+    .omni-section h3 { margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#99a1b4; }
+    .omni-block { border:1px solid var(--line); background:rgba(255,255,255,.025); border-radius:12px; padding:12px; white-space:pre-wrap; word-break:break-word; line-height:1.55; font-size:11px; color:#dde1eb; }
+    .omni-modal { position:fixed; inset:0; background:rgba(4,5,8,.66); backdrop-filter:blur(10px); z-index:50; display:none; align-items:center; justify-content:center; padding:14px; }
+    .omni-modal.open { display:flex; }
+    .omni-modal-card { width:min(650px,96vw); max-height:90vh; overflow:auto; background:#0e1017; border:1px solid var(--line); border-radius:18px; box-shadow:0 30px 80px rgba(0,0,0,.45); }
+    .omni-modal-card header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; }
+    .omni-modal-card .content { padding:16px; }
+    .omni-field { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+    .omni-field label { font-size:10px; color:#aeb5c5; text-transform:uppercase; letter-spacing:.06em; }
+    .omni-field input, .omni-field select { height:38px; padding:0 10px; background:#11131b; color:#fff; border:1px solid var(--line); border-radius:10px; outline:none; }
+    .omni-field input:focus, .omni-field select:focus { border-color:rgba(124,92,255,.6); box-shadow:0 0 0 3px rgba(124,92,255,.1); }
+    .omni-checks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+    .omni-check { display:flex; align-items:center; gap:8px; padding:9px 10px; border:1px solid var(--line); background:rgba(255,255,255,.025); border-radius:10px; font-size:11px; }
+    .omni-settings-source { border:1px solid var(--line); border-radius:12px; padding:11px; display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    .omni-color { width:30px; height:30px; border-radius:9px; border:1px solid var(--line); }
+    @media (max-width:760px) { .omni-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:520px) { .omni-grid { grid-template-columns:1fr 1fr; gap:8px; } .omni-library{padding:10px;} .omni-top,.omni-toolbar{padding-left:10px;padding-right:10px;} .omni-detail-hero{grid-template-columns:76px 1fr;} .omni-detail-avatar{width:76px;height:96px;} }
+    .omni-skeleton { border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#11131a; }
+    .omni-skeleton::before { content:""; display:block; aspect-ratio:4/5; background:linear-gradient(90deg,#11131a,#1a1d27,#11131a); animation:omniShimmer 1.15s infinite; }
+    .omni-skeleton::after { content:""; display:block; height:56px; background:linear-gradient(90deg,#11131a,#191c25,#11131a); animation:omniShimmer 1.15s infinite; }
+    @keyframes omniShimmer { from{background-position:-240px 0} to{background-position:240px 0} }
+    body.omni-light .omni-v2 { --bg:#f4f5fb; --panel:#fff; --panel2:#f0f1f7; --line:rgba(20,24,36,.11); --muted:#6e7689; --text:#151821; background:#f4f5fb; }
   `);
 
-  let currentSource = 'chub';
-  let currentSort = 'download_count';
-  let selectedTag = '';
-  let currentPage = 1;
-  let currentSearch = '';
-  let includeNsfw = false;
-
-  function callBackend(action, payload) {
-    return new Promise((resolve, reject) => {
-      const requestId = Math.random().toString(36).slice(2);
-      const timer = setTimeout(() => {
-        ctx.offBackendMessage?.(handler);
-        reject(new Error("Request timed out. Please try again."));
-      }, 15000);
-
-      const handler = (msg) => {
-        if (msg?.requestId !== requestId) return;
-        clearTimeout(timer);
-        ctx.offBackendMessage?.(handler);
-        if (msg.type === 'ERROR') reject(new Error(msg.error || 'Operation failed'));
-        else resolve(msg);
-      };
-
-      ctx.onBackendMessage(handler);
-      ctx.sendToBackend({ action, provider: currentSource, payload, requestId });
-    });
-  }
-
-  // 1. PRIMARY DRAWER TAB (In the scroller)
   const tab = ctx.ui.registerDrawerTab({
-    id: 'omni_rose_hub',
-    title: 'Character Hub',
-    shortName: 'Hub',
-    description: 'Browse Chub, JannyAI, and Datacat',
-    headerTitle: 'Character Hub',
-    iconSvg: roseSvg
+    id:'omni_2',
+    title:'Omni Hub',
+    shortName:'Omni',
+    description:'Beautiful character-card library and importer',
+    headerTitle:'Omni Character Hub',
+    iconSvg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l1.8 4.4L18 9l-4.2 1.7L12 15l-1.8-4.3L6 9l4.2-1.6L12 3Z"/><path d="M19 14l.9 2.2L22 17l-2.1.8L19 20l-.9-2.2L16 17l2.1-.8L19 14Z"/></svg>`
   });
 
-  // 2. PINNED SHORTCUT BUTTON (Right next to the Settings gear)
-  function installPinnedRose() {
-    if (document.getElementById('omni-topbar-rose-btn')) return;
-
-    const rightButtons = Array.from(document.querySelectorAll('button'));
-    const targetAnchor = rightButtons.find(b => 
-      b.innerHTML.includes('#f59e0b') || 
-      b.innerHTML.includes('#eab308') || 
-      b.getAttribute('data-action') === 'datacat' || 
-      b.getAttribute('title')?.toLowerCase().includes('setting') ||
-      b.getAttribute('aria-label')?.toLowerCase().includes('setting') ||
-      b.querySelector('svg path[d*="M19.14"]')
-    );
-
-    if (targetAnchor && targetAnchor.parentElement) {
-      const roseBtn = document.createElement('button');
-      roseBtn.id = 'omni-topbar-rose-btn';
-      roseBtn.className = targetAnchor.className;
-      roseBtn.classList.add('omni-topbar-pinned');
-      roseBtn.setAttribute('title', 'Character Hub');
-      roseBtn.innerHTML = roseSvg;
-      roseBtn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        tab.activate();
-      };
-      targetAnchor.parentElement.insertBefore(roseBtn, targetAnchor);
-    }
-  }
-
-  installPinnedRose();
-  setInterval(installPinnedRose, 1000);
-
-  const container = tab.root;
-  container.innerHTML = `
-    <div class="omni-root">
-      <!-- FULL IMAGE PREVIEW MODAL -->
-      <div class="omni-img-modal" id="omni-img-modal">
-        <button class="omni-btn" id="omni-img-modal-close" style="position:absolute; top:12px; right:12px; padding:6px 12px;">&times; Close</button>
-        <img id="omni-preview-img" />
-        <span style="color:#64748b; font-size:0.75rem; margin-top:8px;">Tap anywhere to close</span>
-      </div>
-
-      <!-- DEDICATED TAGS MODAL -->
-      <div class="omni-tag-modal" id="omni-tag-modal">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-weight:700; font-size:0.85rem;">Select Filter Tag</span>
-          <button class="omni-btn" id="omni-tag-modal-close" style="padding:4px 8px;">&times; Close</button>
-        </div>
-        <div class="omni-input-box" style="margin:4px 0;">
-          <input type="text" id="omni-tag-search-input" placeholder="Type tag name to filter..." />
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <button id="omni-clear-tag" style="background:none; border:none; color:#f43f5e; font-size:0.75rem; cursor:pointer;">Clear Selected Tag</button>
-          <span id="omni-active-tag-label" style="font-size:0.72rem; color:#94a3b8;">Active: None</span>
-        </div>
-        <div class="omni-tag-grid" id="omni-tag-grid"></div>
-      </div>
-
-      <!-- CHARACTER DETAIL INSPECTOR -->
-      <div class="omni-inspector" id="omni-inspector">
-        <div class="omni-inspector-top">
-          <button class="omni-pager-btn" id="omni-detail-back">&larr; Back</button>
-          <img class="omni-inspector-thumb" id="omni-detail-thumb" title="Tap to preview image" />
-          <div style="flex:1; min-width:0;">
-            <div id="omni-detail-name" style="font-size:0.85rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
-            <div id="omni-detail-author" style="font-size:0.68rem; color:#94a3b8;"></div>
+  const root = tab.root;
+  root.innerHTML = `
+    <div class="omni-v2">
+      <div class="omni-shell">
+        <header class="omni-top">
+          <div class="omni-brand">
+            <div class="omni-logo">${icon('grid',17)}</div>
+            <div>
+              <div class="omni-title">Omni Character Hub</div>
+              <div class="omni-sub">One clean library for your imported character cards</div>
+            </div>
+            <div class="omni-spacer"></div>
+            <div class="omni-top-actions">
+              <button class="omni-btn-icon" id="omni-settings">${icon('settings',17)}</button>
+            </div>
           </div>
-          <button class="omni-btn" id="omni-detail-import" style="padding:6px 10px;">📥 Import</button>
-        </div>
+        </header>
 
-        <div class="omni-inspector-subtabs">
-          <button class="omni-subtab active" data-tab="greetings">💬 Greetings (<span id="omni-greet-count">1</span>)</button>
-          <button class="omni-subtab" data-tab="definition">🎭 Definition</button>
-          <button class="omni-subtab" data-tab="summary">📖 Summary & Notes</button>
-          <button class="omni-subtab" data-tab="stats">📊 Specs</button>
+        <div class="omni-toolbar">
+          <div class="omni-search">${icon('search',16)}<input id="omni-q" placeholder="Search names, creators, descriptions, or tags…" /></div>
+          <button class="omni-control" id="omni-tags">${icon('tag',15)} Tags</button>
+          <button class="omni-control" id="omni-import">${icon('import',15)} Import</button>
         </div>
+        <div id="omni-sources-bar" style="padding:8px 16px;display:flex;gap:6px;overflow:auto;border-bottom:1px solid var(--line);background:rgba(10,11,16,.72);"></div>
 
-        <div class="omni-inspector-body" id="omni-detail-body"></div>
+        <main class="omni-main">
+          <section class="omni-library">
+            <div class="omni-meta-row">
+              <span class="omni-pill" id="omni-count">0 characters</span>
+              <div class="omni-segment" id="omni-view-segment">
+                <button data-view="grid" class="active">${icon('grid',13)}</button>
+                <button data-view="list">${icon('sliders',13)}</button>
+              </div>
+              <select class="omni-control" id="omni-sort" style="height:30px;padding:0 9px;">
+                <option value="updated">Recently updated</option>
+                <option value="created">Recently added</option>
+                <option value="name">Name A–Z</option>
+                <option value="creator">Creator A–Z</option>
+              </select>
+              <div class="omni-spacer"></div>
+              <span class="omni-pill" id="omni-filter-pill">All tags</span>
+            </div>
+            <div class="omni-grid" id="omni-grid"></div>
+            <div class="omni-loadmore"><button class="omni-control" id="omni-more" style="display:none;">Load more</button></div>
+          </section>
+        </main>
       </div>
 
-      <!-- PLATFORM SEGMENTED NAV -->
-      <div class="omni-nav-tabs">
-        <button class="omni-tab-btn active" data-src="chub">Chub.ai</button>
-        <button class="omni-tab-btn" data-src="janny">JanitorAI</button>
-        <button class="omni-tab-btn" data-src="datacat">Datacat</button>
+      <div class="omni-drawer" id="omni-detail-overlay">
+        <aside class="omni-panel">
+          <div class="omni-panel-header">
+            <button class="omni-btn-icon" id="omni-detail-close">${icon('back',16)}</button>
+            <strong id="omni-detail-heading">Character</strong>
+            <div class="omni-spacer"></div>
+          </div>
+          <div class="omni-panel-body" id="omni-detail-body"></div>
+        </aside>
       </div>
 
-      <!-- SEARCH BAR & TAG BUTTON -->
-      <div class="omni-bar-row">
-        <div class="omni-input-box">
-          <input type="text" id="omni-query" placeholder="Search characters or paste link..." />
+      <div class="omni-modal" id="omni-tags-modal">
+        <div class="omni-modal-card">
+          <header><strong>Tag filters</strong><div class="omni-spacer"></div><button class="omni-btn-icon" id="omni-tags-close">${icon('x',16)}</button></header>
+          <div class="content">
+            <div class="omni-field"><label>Match mode</label><select id="omni-tag-mode"><option value="AND">Match all selected tags</option><option value="OR">Match any selected tag</option></select></div>
+            <div id="omni-tag-facets" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          </div>
         </div>
-        <button class="omni-btn-secondary" id="omni-tag-btn">🏷️ Tags</button>
-        <button class="omni-btn" id="omni-go">Search</button>
       </div>
 
-      <!-- COMPACT SORT STRIP -->
-      <div class="omni-strip">
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span>Sort:</span>
-          <select class="omni-select" id="omni-sort-select"></select>
+      <div class="omni-modal" id="omni-import-modal">
+        <div class="omni-modal-card">
+          <header><strong>Import character card</strong><div class="omni-spacer"></div><button class="omni-btn-icon" id="omni-import-close">${icon('x',16)}</button></header>
+          <div class="content">
+            <div class="omni-field"><label>Source label</label><input id="omni-source-label" value="Local Cards" placeholder="e.g. My Archive" /></div>
+            <div class="omni-field"><label>Character card file</label><input id="omni-file" type="file" accept=".json,.png,.charx,.charcard,application/json,image/png,application/zip" /></div>
+            <div style="font-size:10px;color:#8d96aa;line-height:1.5;margin-bottom:12px;">The importer preserves the card fields Lumiverse supports and stores the source label in Omni metadata. Cards that explicitly declare mature/adult metadata are not imported.</div>
+            <div style="display:flex;justify-content:flex-end;gap:7px;"><button class="omni-control" id="omni-import-cancel">Cancel</button><button class="omni-control primary" id="omni-import-submit">${icon('import',14)} Import card</button></div>
+          </div>
         </div>
-        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-          <input type="checkbox" id="omni-nsfw" /> NSFW
-        </label>
       </div>
 
-      <!-- 2-COLUMN CARDS GRID -->
-      <div class="omni-grid" id="omni-grid"></div>
-
-      <!-- PAGINATION -->
-      <div class="omni-pager">
-        <button class="omni-pager-btn" id="omni-prev" disabled>&lt; Prev</button>
-        <span id="omni-page-display" style="font-size:0.72rem; font-weight:700; color:#94a3b8;">Page 1</span>
-        <button class="omni-pager-btn" id="omni-next">Next &gt;</button>
+      <div class="omni-modal" id="omni-settings-modal">
+        <div class="omni-modal-card">
+          <header><strong>Omni settings</strong><div class="omni-spacer"></div><button class="omni-btn-icon" id="omni-settings-close">${icon('x',16)}</button></header>
+          <div class="content">
+            <div class="omni-field"><label>Theme</label><select id="omni-setting-theme"><option value="auto">Follow Lumiverse</option><option value="dark">Dark</option><option value="light">Light</option></select></div>
+            <div class="omni-field"><label>Density</label><select id="omni-setting-density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></div>
+            <div class="omni-field"><label>Characters per page</label><select id="omni-setting-page"><option>20</option><option>30</option><option>50</option><option>80</option></select></div>
+            <div class="omni-checks">
+              <label class="omni-check"><input type="checkbox" id="omni-setting-tags" /> Show tag chips</label>
+              <label class="omni-check"><input type="checkbox" id="omni-setting-stats" /> Show stats</label>
+              <label class="omni-check"><input type="checkbox" id="omni-setting-fav" /> Favorites first</label>
+            </div>
+            <div style="margin-top:18px;font-size:11px;color:#9da5b5;">Sources</div>
+            <div id="omni-sources" style="margin-top:8px;"></div>
+            <div style="margin-top:10px;font-size:10px;color:#737b8f;">Source connectors are deliberately isolated. Each connector keeps its own identity, metadata, categories, tags and import provenance instead of falling back to another catalog.</div>
+          </div>
+        </div>
       </div>
     </div>
   `;
 
-  // UI Bindings
-  const grid = container.querySelector('#omni-grid');
-  const input = container.querySelector('#omni-query');
-  const goBtn = container.querySelector('#omni-go');
-  const nsfwBox = container.querySelector('#omni-nsfw');
-  const pageDisplay = container.querySelector('#omni-page-display');
-  const prevBtn = container.querySelector('#omni-prev');
-  const nextBtn = container.querySelector('#omni-next');
-  const sortSelect = container.querySelector('#omni-sort-select');
-  const tagBtn = container.querySelector('#omni-tag-btn');
+  const q = root.querySelector('#omni-q');
+  const grid = root.querySelector('#omni-grid');
+  const count = root.querySelector('#omni-count');
+  const more = root.querySelector('#omni-more');
+  const sort = root.querySelector('#omni-sort');
+  const tagsModal = root.querySelector('#omni-tags-modal');
+  const importModal = root.querySelector('#omni-import-modal');
+  const settingsModal = root.querySelector('#omni-settings-modal');
+  const detailOverlay = root.querySelector('#omni-detail-overlay');
 
-  // Tag Modal Bindings
-  const tagModal = container.querySelector('#omni-tag-modal');
-  const tagModalClose = container.querySelector('#omni-tag-modal-close');
-  const tagSearchInput = container.querySelector('#omni-tag-search-input');
-  const tagGrid = container.querySelector('#omni-tag-grid');
-  const clearTagBtn = container.querySelector('#omni-clear-tag');
-  const activeTagLabel = container.querySelector('#omni-active-tag-label');
+  let settings = { pageSize:30, sort:'updated', view:'grid', tagMode:'AND', showTags:true, showStats:true, favoriteFirst:false, theme:'auto', density:'comfortable' };
+  let sources = [];
+  let activeTags = [];
+  let activeSourceId = '';
+  let page = 1;
+  let busy = false;
+  let latestItems = [];
 
-  // Image Modal Bindings
-  const imgModal = container.querySelector('#omni-img-modal');
-  const previewImg = container.querySelector('#omni-preview-img');
-  const imgModalClose = container.querySelector('#omni-img-modal-close');
-
-  // Inspector Bindings
-  const inspector = container.querySelector('#omni-inspector');
-  const detailBack = container.querySelector('#omni-detail-back');
-  const detailThumb = container.querySelector('#omni-detail-thumb');
-  const detailName = container.querySelector('#omni-detail-name');
-  const detailAuthor = container.querySelector('#omni-detail-author');
-  const detailImport = container.querySelector('#omni-detail-import');
-  const detailBody = container.querySelector('#omni-detail-body');
-  const greetCountTxt = container.querySelector('#omni-greet-count');
-
-  let activeCharId = null;
-  let activeCharData = null;
-  let activeTab = 'greetings';
-
-  // Modal Handlers
-  detailThumb.onclick = () => {
-    if (!activeCharData?.avatarUrl) return;
-    previewImg.src = activeCharData.avatarUrl;
-    imgModal.classList.add('open');
-  };
-  imgModalClose.onclick = () => imgModal.classList.remove('open');
-  imgModal.onclick = (e) => { if (e.target !== previewImg) imgModal.classList.remove('open'); };
-  detailBack.onclick = () => inspector.classList.remove('open');
-
-  // Tag Modal Open/Close
-  tagBtn.onclick = () => {
-    tagModal.classList.add('open');
-    tagSearchInput.value = '';
-    renderTagChips('');
-  };
-  tagModalClose.onclick = () => tagModal.classList.remove('open');
-
-  function renderTagChips(filterTerm) {
-    const list = PLATFORMS[currentSource].tags;
-    const filtered = filterTerm
-      ? list.filter(t => t.toLowerCase().includes(filterTerm.toLowerCase()))
-      : list;
-
-    tagGrid.innerHTML = filtered.map(t => `
-      <span class="omni-modal-chip ${selectedTag.toLowerCase() === t.toLowerCase() ? 'active' : ''}" data-val="${t}">${t}</span>
-    `).join('');
-
-    tagGrid.querySelectorAll('.omni-modal-chip').forEach(chip => {
-      chip.onclick = (e) => {
-        selectedTag = e.target.getAttribute('data-val');
-        tagBtn.classList.add('active');
-        tagBtn.innerText = `🏷️ ${selectedTag}`;
-        activeTagLabel.innerText = `Active: ${selectedTag}`;
-        tagModal.classList.remove('open');
-        currentPage = 1;
-        loadCatalog();
+  function request(action, payload={}) {
+    return new Promise((resolve,reject) => {
+      const requestId = Math.random().toString(36).slice(2);
+      const timeout = setTimeout(() => {
+        ctx.offBackendMessage?.(handler);
+        reject(new Error('The extension did not respond in time.'));
+      }, 15000);
+      const handler = (msg) => {
+        if (msg?.requestId !== requestId) return;
+        clearTimeout(timeout);
+        ctx.offBackendMessage?.(handler);
+        if (msg.type === 'ERROR') reject(new Error(msg.error || 'Operation failed'));
+        else resolve(msg.result);
       };
+      ctx.onBackendMessage(handler);
+      ctx.sendToBackend({ action, payload, requestId });
     });
   }
 
-  tagSearchInput.addEventListener('input', (e) => {
-    renderTagChips(e.target.value.trim());
-  });
+  function applyTheme() {
+    document.body.classList.toggle('omni-light', settings.theme === 'light');
+  }
 
-  clearTagBtn.onclick = () => {
-    selectedTag = '';
-    tagBtn.classList.remove('active');
-    tagBtn.innerText = '🏷️ Tags';
-    activeTagLabel.innerText = 'Active: None';
-    tagModal.classList.remove('open');
-    currentPage = 1;
-    loadCatalog();
+  function applyLayout() {
+    grid.classList.toggle('list', settings.view === 'list');
+    root.querySelector('#omni-view-segment').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.view === settings.view));
+  }
+
+  function renderSourcesBar(){
+    const bar = root.querySelector('#omni-sources-bar');
+    const list = [{id:'',name:'All sources'}, ...(sources||[]).filter(s=>s.enabled)];
+    bar.innerHTML = list.map(s => `<button class="omni-control ${activeSourceId===s.id?'primary':''}" data-source="${escapeAttr(s.id)}" style="height:30px;white-space:nowrap;">${escapeHtml(s.name)}</button>`).join('');
+    bar.querySelectorAll('[data-source]').forEach(btn => btn.onclick = () => {
+      activeSourceId = btn.dataset.source;
+      page = 1;
+      renderSourcesBar();
+      load(false);
+    });
+  }
+
+  function renderFacets(facets=[]) {
+    const box = root.querySelector('#omni-tag-facets');
+    const chosen = new Set(activeTags.map(t => t.toLowerCase()));
+    box.innerHTML = facets.map(({tag,count}) => {
+      const active = chosen.has(tag.toLowerCase());
+      return `<button class="omni-tag ${active ? 'active' : ''}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)} · ${count}</button>`;
+    }).join('') || '<div style="font-size:10px;color:#777f90;">No tags in the current library.</div>';
+    box.querySelectorAll('[data-tag]').forEach(btn => btn.onclick = () => {
+      const tag = btn.dataset.tag;
+      const idx = activeTags.findIndex(t => t.toLowerCase() === tag.toLowerCase());
+      if (idx >= 0) activeTags.splice(idx,1); else activeTags.push(tag);
+      root.querySelector('#omni-filter-pill').textContent = activeTags.length ? `${activeTags.length} tag${activeTags.length>1?'s':''}` : 'All tags';
+      page = 1;
+      load(false);
+      renderFacets(latestItems.facets || []);
+    });
+  }
+
+  function escapeHtml(text) {
+    return String(text ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  function escapeAttr(text) { return escapeHtml(text).replace(/`/g,'&#96;'); }
+
+  function skeletons() {
+    grid.innerHTML = Array.from({length:Math.max(4, Number(settings.columns || 3) * 2)}, () => '<div class="omni-skeleton"></div>').join('');
+  }
+
+  function renderItems(data, append=false) {
+    latestItems = data;
+    if (!append) grid.innerHTML = '';
+    const rows = data.items || [];
+    if (!rows.length && !append) {
+      grid.innerHTML = `<div class="omni-empty" style="grid-column:1/-1;"><strong>No characters found</strong>Try another search or clear a tag filter.</div>`;
+    } else {
+      grid.insertAdjacentHTML('beforeend', rows.map(item => {
+        const tags = settings.showTags ? (item.tags || []).slice(0, 5).map(t => `<button class="omni-tag" data-card-tag="${escapeAttr(t)}">${escapeHtml(t)}</button>`).join('') : '';
+        return `
+          <article class="omni-card" data-id="${escapeAttr(item.id)}">
+            <div class="omni-card-cover">
+              <div class="omni-source">${escapeHtml(item.sourceName || 'Local Cards')}</div>
+              <button class="omni-fav ${item._favorite ? 'active' : ''}" data-fav="${escapeAttr(item.id)}">${icon('star',14)}</button>
+              <div style="width:100%;height:100%;display:grid;place-items:center;color:#555e73;font-size:11px;">No preview</div>
+            </div>
+            <div class="omni-body">
+              <div class="omni-name">${escapeHtml(item.name)}</div>
+              <div class="omni-creator">by ${escapeHtml(item.creator)}</div>
+              <div class="omni-tags">${tags}</div>
+              ${settings.showStats ? `<div class="omni-stats"><span>${item.alternateGreetings || 0} greetings</span><span>${new Date(Number(item.updatedAt||0)*1000).toLocaleDateString()}</span></div>` : ''}
+            </div>
+          </article>
+        `;
+      }).join(''));
+    }
+
+    count.textContent = `${Number(data.total||0).toLocaleString()} character${Number(data.total||0)===1?'':'s'}`;
+    more.style.display = data.hasNext ? 'inline-flex' : 'none';
+    grid.querySelectorAll('.omni-card').forEach(card => card.onclick = (e) => {
+      if (e.target.closest('[data-fav]') || e.target.closest('[data-card-tag]')) return;
+      openDetails(card.dataset.id);
+    });
+    grid.querySelectorAll('[data-fav]').forEach(btn => btn.onclick = async (e) => {
+      e.stopPropagation();
+      const active = !btn.classList.contains('active');
+      await request('SET_FAVORITE',{id:btn.dataset.fav,favorite:active});
+      load(false);
+    });
+    grid.querySelectorAll('[data-card-tag]').forEach(btn => btn.onclick = (e) => {
+      e.stopPropagation();
+      const tag = btn.dataset.cardTag;
+      if (!activeTags.some(t=>t.toLowerCase()===tag.toLowerCase())) activeTags.push(tag);
+      root.querySelector('#omni-filter-pill').textContent = `${activeTags.length} tag${activeTags.length>1?'s':''}`;
+      page = 1; load(false);
+    });
+  }
+
+  async function load(append=false) {
+    if (busy) return;
+    busy = true;
+    if (!append) skeletons();
+    try {
+      const data = await request('LIST_LIBRARY',{
+        query:q.value.trim(),
+        sourceId:activeSourceId,
+        tags:activeTags,
+        tagMode:settings.tagMode,
+        page: append ? page + 1 : 1,
+        pageSize:Number(settings.pageSize||30),
+        sort:sort.value,
+        favoriteFirst:Boolean(settings.favoriteFirst)
+      });
+      if (append) page += 1;
+      else page = 1;
+      renderItems(data, append);
+      renderFacets(data.facets || []);
+    } catch (e) {
+      grid.innerHTML = `<div class="omni-empty" style="grid-column:1/-1;"><strong>Could not load library</strong>${escapeHtml(e.message)}</div>`;
+    } finally { busy = false; }
+  }
+
+  async function openDetails(id) {
+    detailOverlay.classList.add('open');
+    root.querySelector('#omni-detail-body').innerHTML = '<div class="omni-empty">Loading character…</div>';
+    try {
+      const { character:c } = await request('GET_CHARACTER',{id});
+      const fav = (await request('LIST_LIBRARY',{query:c.name,page:1,pageSize:1})).items?.some(i=>i.id===id && i._favorite);
+      root.querySelector('#omni-detail-heading').textContent = c.name || 'Character';
+      root.querySelector('#omni-detail-body').innerHTML = `
+        <div class="omni-detail-hero">
+          <div class="omni-detail-avatar"></div>
+          <div>
+            <div class="omni-detail-name">${escapeHtml(c.name)}</div>
+            <div class="omni-detail-creator">by ${escapeHtml(c.creator || 'Community')}</div>
+            <div class="omni-pill" style="display:inline-block;margin-top:8px;">${escapeHtml(c.sourceInfo?.imported_source || 'Local Cards')}</div>
+            <div class="omni-detail-actions">
+              <button class="omni-control" id="omni-detail-fav">${icon('star',14)} ${fav?'Unfavorite':'Favorite'}</button>
+              <button class="omni-control" id="omni-detail-delete">${icon('x',14)} Delete</button>
+            </div>
+          </div>
+        </div>
+        <div class="omni-section"><h3>Tags</h3><div class="omni-tags">${(c.tags||[]).map(t=>`<span class="omni-tag">${escapeHtml(t)}</span>`).join('') || '<span style="font-size:10px;color:#777f90;">No tags</span>'}</div></div>
+        <div class="omni-section"><h3>Description</h3><div class="omni-block">${escapeHtml(c.description || 'No description.')}</div></div>
+        <div class="omni-section"><h3>Personality</h3><div class="omni-block">${escapeHtml(c.personality || 'No personality data.')}</div></div>
+        <div class="omni-section"><h3>Scenario</h3><div class="omni-block">${escapeHtml(c.scenario || 'No scenario.')}</div></div>
+        <div class="omni-section"><h3>First message</h3><div class="omni-block">${escapeHtml(c.first_mes || 'No first message.')}</div></div>
+        ${(c.alternate_greetings||[]).length ? `<div class="omni-section"><h3>Alternate greetings (${c.alternate_greetings.length})</h3>${c.alternate_greetings.map((g,i)=>`<div class="omni-block" style="margin-bottom:8px;"><b>Greeting ${i+2}</b><br>${escapeHtml(g)}</div>`).join('')}</div>` : ''}
+        <div class="omni-section"><h3>Example dialogue</h3><div class="omni-block">${escapeHtml(c.mes_example || 'No example dialogue.')}</div></div>
+        <div class="omni-section"><h3>Creator notes</h3><div class="omni-block">${escapeHtml(c.creator_notes || 'No creator notes.')}</div></div>
+      `;
+      root.querySelector('#omni-detail-fav').onclick = async () => {
+        await request('SET_FAVORITE',{id,favorite:!fav});
+        openDetails(id); load(false);
+      };
+      root.querySelector('#omni-detail-delete').onclick = async () => {
+        if (!confirm(`Delete "${c.name}" from your Lumiverse library?`)) return;
+        await request('DELETE_CHARACTER',{id});
+        detailOverlay.classList.remove('open');
+        load(false);
+      };
+    } catch (e) {
+      root.querySelector('#omni-detail-body').innerHTML = `<div class="omni-empty"><strong>Could not open character</strong>${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  function open(el){el.classList.add('open');}
+  function close(el){el.classList.remove('open');}
+
+  root.querySelector('#omni-detail-close').onclick = ()=>close(detailOverlay);
+  detailOverlay.onclick = e => { if(e.target===detailOverlay) close(detailOverlay); };
+  root.querySelector('#omni-tags').onclick = ()=>open(tagsModal);
+  root.querySelector('#omni-tags-close').onclick = ()=>close(tagsModal);
+  tagsModal.onclick = e => { if(e.target===tagsModal) close(tagsModal); };
+  root.querySelector('#omni-import').onclick = ()=>open(importModal);
+  root.querySelector('#omni-import-close').onclick = ()=>close(importModal);
+  root.querySelector('#omni-import-cancel').onclick = ()=>close(importModal);
+  importModal.onclick = e => { if(e.target===importModal) close(importModal); };
+  root.querySelector('#omni-settings').onclick = ()=>{
+    root.querySelector('#omni-setting-theme').value = settings.theme;
+    root.querySelector('#omni-setting-density').value = settings.density;
+    root.querySelector('#omni-setting-page').value = String(settings.pageSize);
+    root.querySelector('#omni-setting-tags').checked = !!settings.showTags;
+    root.querySelector('#omni-setting-stats').checked = !!settings.showStats;
+    root.querySelector('#omni-setting-fav').checked = !!settings.favoriteFirst;
+    renderSources();
+    open(settingsModal);
+  };
+  root.querySelector('#omni-settings-close').onclick = ()=>close(settingsModal);
+  settingsModal.onclick = e => { if(e.target===settingsModal) close(settingsModal); };
+
+  root.querySelector('#omni-tag-mode').onchange = async e => {
+    settings.tagMode = e.target.value;
+    await request('SAVE_SETTINGS',settings);
+    page=1; load(false);
   };
 
-  function updatePlatformControls() {
-    const cfg = PLATFORMS[currentSource];
-    sortSelect.innerHTML = cfg.sorts.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    currentSort = cfg.sorts[0].id;
-    selectedTag = '';
-    tagBtn.classList.remove('active');
-    tagBtn.innerText = '🏷️ Tags';
-    activeTagLabel.innerText = 'Active: None';
-  }
-
-  function renderSkeletons() {
-    grid.innerHTML = Array(6).fill(0).map(() => `<div class="omni-skeleton"></div>`).join('');
-  }
-
-  function renderInspectorTab(tabKey) {
-    if (!activeCharData) return;
-    const d = activeCharData;
-
-    if (tabKey === 'greetings') {
-      const altList = d.alternate_greetings || [];
-      detailBody.innerHTML = `
-        <div style="font-size:0.7rem; font-weight:700; color:#10b981; text-transform:uppercase;">Primary First Message</div>
-        <div class="omni-block" style="border-color:rgba(16,185,129,0.3);">${d.first_mes || 'No greeting defined.'}</div>
-
-        ${altList.length > 0 ? `
-          <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Alternate Greetings (${altList.length})</div>
-          ${altList.map((g, idx) => `
-            <div class="omni-block" style="border-color:rgba(244,63,94,0.2);">
-              <div style="font-size:0.65rem; font-weight:700; color:#fda4af; margin-bottom:4px;">Greeting #${idx + 2}</div>
-              ${g}
-            </div>
-          `).join('')}
-        ` : ''}
-
-        ${d.mes_example ? `
-          <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Example Dialogue</div>
-          <div class="omni-block">${d.mes_example}</div>
-        ` : ''}
-      `;
-    } else if (tabKey === 'definition') {
-      detailBody.innerHTML = `
-        <div style="font-size:0.7rem; font-weight:700; color:#10b981; text-transform:uppercase;">Prompt Definition</div>
-        <div class="omni-block">${d.charDescription || 'No prompt definition visible.'}</div>
-
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Personality</div>
-        <div class="omni-block">${d.personality || 'No personality definition visible.'}</div>
-
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Scenario</div>
-        <div class="omni-block">${d.scenario || 'No specific scenario.'}</div>
-      `;
-    } else if (tabKey === 'summary') {
-      detailBody.innerHTML = `
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase;">Catalog Summary</div>
-        <div class="omni-block">${d.webSummary || 'No summary provided.'}</div>
-
-        ${d.creator_notes ? `
-          <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Author Notes</div>
-          <div class="omni-block">${d.creator_notes}</div>
-        ` : ''}
-
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Tags</div>
-        <div style="display:flex; gap:4px; flex-wrap:wrap;">
-          ${(d.tags || []).map(t => `<span class="omni-modal-chip" style="font-size:0.65rem; padding:3px 8px;">${t}</span>`).join('')}
-        </div>
-      `;
-    } else if (tabKey === 'stats') {
-      detailBody.innerHTML = `
-        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase;">Specifications</div>
-        <div class="omni-block">
-          • Estimated Total Tokens: <b>${d.totalTokens ? d.totalTokens.toLocaleString() : 'N/A'}</b><br>
-          • Source: <b>${d.source.toUpperCase()}</b><br>
-          • Format: <b>Character Card V2 (CCv2)</b>
-        </div>
-      `;
-    }
-  }
-
-  container.querySelectorAll('.omni-subtab').forEach(btn => {
-    btn.onclick = (e) => {
-      container.querySelectorAll('.omni-subtab').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      activeTab = e.target.getAttribute('data-tab');
-      renderInspectorTab(activeTab);
-    };
+  root.querySelector('#omni-view-segment').querySelectorAll('button').forEach(btn=>btn.onclick=async()=>{
+    settings.view=btn.dataset.view; applyLayout(); await request('SAVE_SETTINGS',{view:settings.view});
   });
 
-  async function openCharacterDetails(charId) {
-    activeCharId = charId;
-    inspector.classList.add('open');
-    detailName.innerText = 'Loading card...';
-    detailAuthor.innerText = '';
-    detailBody.innerHTML = '<div style="text-align:center; padding:30px; color:#64748b;">Decoding character card...</div>';
+  root.querySelector('#omni-setting-theme').onchange=async e=>{settings.theme=e.target.value;applyTheme();await request('SAVE_SETTINGS',{theme:settings.theme});};
+  root.querySelector('#omni-setting-density').onchange=async e=>{settings.density=e.target.value;await request('SAVE_SETTINGS',{density:settings.density});};
+  root.querySelector('#omni-setting-page').onchange=async e=>{settings.pageSize=Number(e.target.value);await request('SAVE_SETTINGS',{pageSize:settings.pageSize});page=1;load(false);};
+  root.querySelector('#omni-setting-tags').onchange=async e=>{settings.showTags=e.target.checked;await request('SAVE_SETTINGS',{showTags:settings.showTags});load(false);};
+  root.querySelector('#omni-setting-stats').onchange=async e=>{settings.showStats=e.target.checked;await request('SAVE_SETTINGS',{showStats:settings.showStats});load(false);};
+  root.querySelector('#omni-setting-fav').onchange=async e=>{settings.favoriteFirst=e.target.checked;await request('SAVE_SETTINGS',{favoriteFirst:settings.favoriteFirst});load(false);};
 
-    try {
-      const res = await callBackend('GET_DETAILS', { id: charId });
-      activeCharData = res.details;
-      detailThumb.src = activeCharData.avatarUrl;
-      detailName.innerText = activeCharData.name;
-      detailAuthor.innerText = `by ${activeCharData.creator} • ${activeCharData.source.toUpperCase()}`;
-      greetCountTxt.innerText = String(1 + (activeCharData.alternate_greetings ? activeCharData.alternate_greetings.length : 0));
-      renderInspectorTab(activeTab);
-    } catch (e) {
-      detailBody.innerHTML = `<div style="color:#f87171; padding:20px; text-align:center;">Failed to load: ${e.message}</div>`;
-    }
+  function renderSources(){
+    const box=root.querySelector('#omni-sources');
+    box.innerHTML=(sources||[]).map(s=>`
+      <div class="omni-settings-source">
+        <div class="omni-color" style="background:${escapeAttr(s.accent||'#7c5cff')}"></div>
+        <div style="min-width:0;flex:1;"><div style="font-size:11px;font-weight:800;">${escapeHtml(s.name)}</div><div style="font-size:9px;color:#7b8497;">${escapeHtml(s.description||'Independent source')}</div></div>
+        <span class="omni-pill">${s.kind==='local'?'Built-in':'Connector'}</span>
+      </div>
+    `).join('');
   }
 
-  detailImport.onclick = async () => {
-    if (!activeCharId) return;
-    detailImport.disabled = true;
-    detailImport.innerText = 'Importing...';
+  sort.onchange=()=>load(false);
+  q.addEventListener('input',()=>load(false));
+  q.addEventListener('keydown',e=>{if(e.key==='Enter')load(false);});
+  more.onclick=()=>load(true);
+
+  root.querySelector('#omni-import-submit').onclick = async () => {
+    const file = root.querySelector('#omni-file').files?.[0];
+    const sourceName = root.querySelector('#omni-source-label').value.trim() || 'Local Cards';
+    if (!file) { alert('Choose a character-card file first.'); return; }
+    const button = root.querySelector('#omni-import-submit');
+    button.disabled=true; button.textContent='Importing…';
     try {
-      const res = await callBackend('IMPORT', { id: activeCharId });
-      detailImport.innerText = '✓ In Library';
-      alert(`Imported "${res.characterName}" successfully!`);
-    } catch (e) {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary='';
+      const chunk=0x8000;
+      for(let i=0;i<bytes.length;i+=chunk) binary += String.fromCharCode(...bytes.subarray(i,Math.min(i+chunk,bytes.length)));
+      await request('IMPORT_FILE_BASE64',{base64:btoa(binary),fileName:file.name,sourceName,sourceId:'local'});
+      close(importModal);
+      root.querySelector('#omni-file').value='';
+      // Refresh source spaces because the import may have created a new source label.
+      const booted = await request('BOOT');
+      sources = booted.sources || sources;
+      renderSourcesBar();
+      alert(`Imported "${file.name}" successfully.`);
+      load(false);
+    } catch(e) {
       alert(`Import failed: ${e.message}`);
-      detailImport.innerText = 'Retry';
-      detailImport.disabled = false;
-    }
-  };
-
-  async function loadCatalog() {
-    renderSkeletons();
-    goBtn.disabled = true;
-    prevBtn.disabled = currentPage <= 1;
-
-    try {
-      if (input.value.startsWith('http')) {
-        const res = await callBackend('IMPORT', { id: input.value.trim() });
-        alert(`Successfully imported "${res.characterName}"!`);
-        input.value = '';
-        loadCatalog();
-        return;
-      }
-
-      const res = await callBackend('SEARCH', {
-        query: currentSearch,
-        sort: currentSort,
-        tag: selectedTag,
-        page: currentPage,
-        nsfw: includeNsfw
-      });
-
-      const chars = res.results.characters || [];
-      pageDisplay.innerText = `Page ${currentPage}`;
-
-      if (!chars.length) {
-        grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:#64748b;">No characters found matching your criteria.</div>';
-        return;
-      }
-
-      grid.innerHTML = chars.map(c => `
-        <div class="omni-card" data-id="${c.id}">
-          <div class="omni-thumb-wrap">
-            <img src="${c.avatarUrl}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2312141c%22/></svg>'"/>
-            <span class="omni-card-source">${c.source}</span>
-          </div>
-          <div class="omni-card-body">
-            <div>
-              <div class="omni-card-title">${c.name}</div>
-              <div class="omni-card-author">by ${c.creator}</div>
-            </div>
-            <div class="omni-card-meta">
-              <span>⬇️ ${c.downloads ? c.downloads.toLocaleString() : '0'}</span>
-              <span>${c.tokens ? c.tokens.toLocaleString() + ' tok' : ''}</span>
-            </div>
-          </div>
-        </div>
-      `).join('');
-
-      grid.querySelectorAll('.omni-card').forEach(card => {
-        card.onclick = () => {
-          const id = card.getAttribute('data-id');
-          openCharacterDetails(id);
-        };
-      });
-    } catch (err) {
-      grid.innerHTML = `<div style="grid-column:1/-1; color:#f43f5e; text-align:center; padding:20px;">${err.message}</div>`;
     } finally {
-      goBtn.disabled = false;
-      prevBtn.disabled = currentPage <= 1;
-    }
-  }
-
-  // Event Listeners
-  sortSelect.onchange = (e) => {
-    currentSort = e.target.value;
-    currentPage = 1;
-    loadCatalog();
-  };
-
-  container.querySelectorAll('.omni-tab-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      container.querySelectorAll('.omni-tab-btn').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      currentSource = e.target.getAttribute('data-src');
-      currentPage = 1;
-      updatePlatformControls();
-      loadCatalog();
-    };
-  });
-
-  goBtn.onclick = () => {
-    currentSearch = input.value.trim();
-    currentPage = 1;
-    loadCatalog();
-  };
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') goBtn.click();
-  });
-
-  nsfwBox.onchange = (e) => {
-    includeNsfw = e.target.checked;
-    loadCatalog();
-  };
-
-  prevBtn.onclick = () => {
-    if (currentPage > 1) {
-      currentPage--;
-      loadCatalog();
+      button.disabled=false; button.innerHTML=`${icon('import',14)} Import card`;
     }
   };
 
-  nextBtn.onclick = () => {
-    currentPage++;
-    loadCatalog();
-  };
+  (async function boot(){
+    try {
+      const booted=await request('BOOT');
+      settings={...settings,...booted.settings};
+      sources=booted.sources||[];
+      renderSourcesBar();
+      applyTheme();
+      applyLayout();
+      root.querySelector('#omni-tag-mode').value=settings.tagMode||'AND';
+      await load(false);
+    } catch(e) {
+      grid.innerHTML=`<div class="omni-empty"><strong>Omni could not start</strong>${escapeHtml(e.message)}</div>`;
+    }
+  })();
 
-  updatePlatformControls();
-  loadCatalog();
+  return () => {
+    style?.();
+    ctx.dom.cleanup?.();
+  };
 }
