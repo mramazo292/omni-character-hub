@@ -1,378 +1,83 @@
-const EXTENSION_ID = 'omni_character_hub';
-const SETTINGS_KEY = 'settings.v2';
-const SOURCES_KEY = 'sources.v2';
+const EXT = 'omni_character_hub';
 
-const DEFAULT_SETTINGS = {
-  theme: 'auto',
-  density: 'comfortable',
-  view: 'grid',
-  columns: 3,
-  showTags: true,
-  showStats: true,
-  defaultSort: 'updated',
-  pageSize: 30,
-  tagMode: 'AND',
-  favoriteFirst: false
+async function httpFetch(url, options = {}) {
+  const headers = { Accept: 'application/json, text/plain, */*', ...(options.headers || {}) };
+  if (typeof spindle !== 'undefined' && typeof spindle.cors === 'function') {
+    try {
+      const r = await spindle.cors(url, { ...options, headers });
+      if (r?.body) {
+        if (typeof r.body === 'string') { try { return JSON.parse(r.body); } catch { return r.body; } }
+        return r.body;
+      }
+    } catch (e) { spindle.log?.warn?.(`Omni ${url}: ${e.message}`); }
+  }
+  const r = await fetch(url, { ...options, headers });
+  const t = await r.text();
+  try { return JSON.parse(t); } catch { return t; }
+}
+
+const tokenEstimate = s => s ? Math.round(String(s).length / 3.8) : 0;
+
+const Chub = {
+  id: 'chub', name: 'Chub.ai',
+  sorts: ['download_count','star_count','last_activity_at','created_at'],
+  async search({query='',page=1,sort='download_count',tag=''}) {
+    const p = new URLSearchParams({search:query,first:'24',page:String(page),sort,venus:'false',asc:'false'});
+    if (tag) p.set('topics', tag);
+    const d = await httpFetch(`https://api.chub.ai/search?${p}`);
+    const nodes = d?.data?.nodes || d?.nodes || [];
+    return nodes.map(c => ({source:'chub', id:c.fullPath, name:c.name||'Unnamed', creator:c.fullPath?.split('/')[0]||'Unknown', avatarUrl:`https://avatars.charhub.io/avatars/${c.fullPath}/avatar.webp`, tagline:c.tagline||c.description?.slice(0,120)||'', tags:c.topics||[], stats:{downloads:c.download_count||0,stars:c.star_count||0,tokens:c.token_count||0}}));
+  },
+  async details(id) {
+    const nodeRes = await httpFetch(`https://api.chub.ai/api/characters/${id}?full=true`);
+    const node = nodeRes?.node || nodeRes || {};
+    let card = {};
+    try { const r = await httpFetch('https://api.chub.ai/api/characters/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fullPath:id,format:'tavern'})}); card = r?.data || r || {}; } catch {}
+    return {source:'chub', id, name:card.name||node.name||'Unnamed', creator:id.split('/')[0]||'Unknown', avatarUrl:`https://avatars.charhub.io/avatars/${id}/avatar.webp`, summary:node.description||node.tagline||'', tags:node.topics||card.tags||[], first_mes:card.first_mes||node.first_mes||'', alternate_greetings:card.alternate_greetings||[], description:card.description||'', personality:card.personality||node.personality||'', scenario:card.scenario||node.scenario||'', mes_example:card.mes_example||'', creator_notes:card.creator_notes||card.extensions?.creator_notes||'', system_prompt:card.system_prompt||'', stats:{downloads:node.download_count||0,stars:node.star_count||0,tokens:node.token_count||tokenEstimate((card.description||'')+(card.personality||''))}};
+  },
+  async import(id) { return httpFetch('https://api.chub.ai/api/characters/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fullPath:id,format:'tavern'})}); }
 };
 
-const DEFAULT_SOURCES = [
-  {
-    id: 'local',
-    name: 'Local Cards',
-    kind: 'local',
-    enabled: true,
-    description: 'Character cards you import from your device.',
-    accent: '#7c5cff'
-  }
-];
+const JannyAI = {
+  id:'janny', name:'Janny AI',
+  sorts:['trending','popular','recent'],
+  extractId(v){ const m=String(v).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i); return m?.[0]||String(v).trim(); },
+  async search({query='',page=1,sort='trending',tag=''}) {
+    const p = new URLSearchParams({page:String(page),sort,search:query}); if(tag)p.set('tags',tag);
+    const d = await httpFetch(`https://janitorai.com/hampter/characters?${p}`);
+    const items = Array.isArray(d?.data)?d.data:Array.isArray(d)?d:[];
+    return items.map(c=>({source:'janny',id:c.id,name:c.name||'Unnamed',creator:c.creator_name||c.author||'Janny AI Creator',avatarUrl:c.avatar?.startsWith('http')?c.avatar:`https://ella.janitorai.com/bot-avatars/${c.avatar}`,tagline:c.description||c.personality?.slice(0,120)||'',tags:Array.isArray(c.tags)?c.tags:[],stats:{chats:c.stats?.chat||c.chat_count||0,favorites:c.stats?.favorite||0,tokens:c.tokens||0}}));
+  },
+  async details(id) {
+    const uuid=this.extractId(id), d=await httpFetch(`https://janitorai.com/hampter/characters/${uuid}`), c=d?.character||d||{};
+    return {source:'janny',id:uuid,name:c.name||'Unnamed',creator:c.creator_name||c.author||'Janny AI Creator',avatarUrl:c.avatar?.startsWith('http')?c.avatar:`https://ella.janitorai.com/bot-avatars/${c.avatar}`,summary:c.description||'',tags:Array.isArray(c.tags)?c.tags:[],first_mes:c.first_message||'',alternate_greetings:Array.isArray(c.first_messages)?c.first_messages:[],description:c.description||'',personality:c.personality||'',scenario:c.scenario||'',mes_example:c.example_dialogs||'',creator_notes:c.creator_notes||'',system_prompt:'',stats:{chats:c.stats?.chat||0,favorites:c.stats?.favorite||0,tokens:c.tokens||tokenEstimate((c.personality||'')+(c.first_message||''))}};
+  },
+  async import(id){ const uuid=this.extractId(id); const d=await httpFetch('https://api.jannyai.com/api/v1/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({characterId:uuid})}); if(!d?.downloadUrl)throw new Error('Janny AI did not return a character-card download.'); const r=await fetch(d.downloadUrl); return {rawPngBuffer:await r.arrayBuffer()}; }
+};
 
-function deepClone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
+const Datacat = {
+  id:'datacat',name:'Datacat',sorts:['fresh','popular'],
+  async search({query='',page=1,sort='fresh',tag=''}) {
+    const term=[query,tag].filter(Boolean).join(' ');
+    const endpoint=term?`https://datacat.run/api/client/v1/characters?search=${encodeURIComponent(term)}&page=${page}`:`https://datacat.run/api/client/v1/fresh?page=${page}`;
+    const d=await httpFetch(endpoint,{headers:{'X-Datacat-Client-Id':'datacat_client_v1'}});
+    const items=Array.isArray(d)?d:(d?.characters||d?.items||d?.nodes||d?.data||[]);
+    return Array.isArray(items)?items.map(c=>({source:'datacat',id:c.id,name:c.name||'Unnamed',creator:c.creator?.name||c.creator||'Datacat Creator',avatarUrl:`https://datacat.run/api/client/v1/characters/${c.id}/avatar`,tagline:c.summary||c.tagline||c.description?.slice(0,120)||'',tags:Array.isArray(c.tags)?c.tags:[],stats:{kudos:c.kudos||c.downloads||0,tokens:c.token_count||0}})):[];
+  },
+  async details(id){ const d=await httpFetch(`https://datacat.run/api/client/v1/characters/${id}/card`,{headers:{'X-Datacat-Client-Id':'datacat_client_v1'}}); const c=d?.data||d||{}; return {source:'datacat',id,name:c.name||'Unnamed',creator:c.creator||'Datacat Creator',avatarUrl:`https://datacat.run/api/client/v1/characters/${id}/avatar`,summary:c.creator_notes||c.description?.slice(0,240)||'',tags:c.tags||[],first_mes:c.first_mes||'',alternate_greetings:c.alternate_greetings||[],description:c.description||'',personality:c.personality||'',scenario:c.scenario||'',mes_example:c.mes_example||'',creator_notes:c.creator_notes||'',system_prompt:c.system_prompt||'',stats:{kudos:c.kudos||0,tokens:tokenEstimate((c.description||'')+(c.personality||'')+(c.first_mes||''))}}; },
+  async import(id){ return httpFetch(`https://datacat.run/api/client/v1/characters/${id}/card`,{headers:{'X-Datacat-Client-Id':'datacat_client_v1'}}); }
+};
 
-async function storageGet(key, fallback) {
-  const s = spindle?.userStorage;
-  if (!s) return fallback;
-  for (const method of ['get', 'read']) {
-    try {
-      if (typeof s[method] !== 'function') continue;
-      const value = await s[method](key);
-      if (value !== undefined && value !== null) return value;
-    } catch {}
-  }
-  return fallback;
-}
+const providers={chub:Chub,janny:JannyAI,datacat:Datacat};
+const normalize=(raw,source)=>raw?.data||raw||{};
 
-async function storageSet(key, value) {
-  const s = spindle?.userStorage;
-  if (!s) return false;
-  for (const method of ['set', 'write']) {
-    try {
-      if (typeof s[method] !== 'function') continue;
-      await s[method](key, value);
-      return true;
-    } catch {}
-  }
-  return false;
-}
-
-async function getSettings() {
-  const saved = await storageGet(SETTINGS_KEY, {});
-  return { ...DEFAULT_SETTINGS, ...(saved && typeof saved === 'object' ? saved : {}) };
-}
-
-async function saveSettings(patch) {
-  const next = { ...(await getSettings()), ...(patch || {}) };
-  await storageSet(SETTINGS_KEY, next);
-  return next;
-}
-
-async function getSources() {
-  const saved = await storageGet(SOURCES_KEY, null);
-  if (!Array.isArray(saved) || !saved.length) {
-    await storageSet(SOURCES_KEY, DEFAULT_SOURCES);
-    return deepClone(DEFAULT_SOURCES);
-  }
-  return saved.map(normalizeSource);
-}
-
-function normalizeSource(source) {
-  const id = String(source?.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 48);
-  return {
-    id: id || `source_${Date.now().toString(36)}`,
-    name: String(source?.name || 'Unnamed Source').trim().slice(0, 80),
-    kind: source?.kind === 'local' ? 'local' : 'custom',
-    enabled: source?.enabled !== false,
-    description: String(source?.description || '').slice(0, 200),
-    accent: String(source?.accent || '#7c5cff').slice(0, 20),
-    homepage: String(source?.homepage || '').slice(0, 300),
-    notes: String(source?.notes || '').slice(0, 500)
-  };
-}
-
-async function saveSources(sources) {
-  const unique = [];
-  const seen = new Set();
-  for (const source of Array.isArray(sources) ? sources : []) {
-    const s = normalizeSource(source);
-    if (seen.has(s.id)) continue;
-    seen.add(s.id);
-    unique.push(s);
-  }
-  if (!unique.some(s => s.id === 'local')) unique.unshift(DEFAULT_SOURCES[0]);
-  await storageSet(SOURCES_KEY, unique);
-  return unique;
-}
-
-function cleanString(value) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function stringArray(value) {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.map(cleanString).filter(Boolean))].slice(0, 80);
-}
-
-function looksExplicit(card) {
-  // Conservative metadata-only gate. We do not inspect prompt prose or search for
-  // mature keywords; explicit imports are simply skipped when the card declares
-  // an adult/NSFW/mature boolean field.
-  const flags = [
-    card?.nsfw, card?.adult, card?.mature, card?.is_nsfw,
-    card?.extensions?.nsfw, card?.extensions?.adult, card?.extensions?.mature,
-    card?.data?.nsfw, card?.data?.adult, card?.data?.mature
-  ];
-  return flags.some(v => v === true || String(v).toLowerCase() === 'true');
-}
-
-function normalizeCard(raw, sourceLabel='Local Cards') {
-  const root = raw?.data && typeof raw.data === 'object' ? raw.data : raw;
-  const extensions = root?.extensions && typeof root.extensions === 'object' ? root.extensions : {};
-  return {
-    name: cleanString(root?.name) || 'Imported Character',
-    description: cleanString(root?.description),
-    personality: cleanString(root?.personality),
-    scenario: cleanString(root?.scenario),
-    first_mes: cleanString(root?.first_mes),
-    mes_example: cleanString(root?.mes_example),
-    creator_notes: cleanString(root?.creator_notes),
-    system_prompt: cleanString(root?.system_prompt),
-    post_history_instructions: cleanString(root?.post_history_instructions),
-    tags: stringArray(root?.tags || root?.topics),
-    alternate_greetings: stringArray(root?.alternate_greetings),
-    creator: cleanString(root?.creator) || 'Community',
-    extensions: {
-      [EXTENSION_ID]: {
-        imported_source: sourceLabel,
-        imported_at: Math.floor(Date.now() / 1000),
-        original_card_version: root?.spec_version || root?.spec || 'unknown'
-      },
-      source: extensions.source
-    }
-  };
-}
-
-function toSummary(char) {
-  const ext = char?.extensions?.[EXTENSION_ID] || {};
-  const tags = Array.isArray(char?.tags) ? char.tags : [];
-  return {
-    id: char.id,
-    name: char.name || 'Unnamed',
-    creator: char.creator || 'Community',
-    description: char.description || '',
-    tags,
-    sourceId: String(ext.imported_source_id || 'local'),
-    sourceName: String(ext.imported_source || 'Local Cards'),
-    createdAt: char.created_at || 0,
-    updatedAt: char.updated_at || char.created_at || 0,
-    alternateGreetings: Array.isArray(char.alternate_greetings) ? char.alternate_greetings.length : 0
-  };
-}
-
-function matchesQuery(item, query) {
-  if (!query) return true;
-  const hay = [
-    item.name, item.creator, item.description, ...(item.tags || []), item.sourceName
-  ].join(' ').toLowerCase();
-  return hay.includes(query.toLowerCase());
-}
-
-function matchesTags(item, tags, mode) {
-  if (!tags?.length) return true;
-  const normalized = new Set((item.tags || []).map(t => t.toLowerCase()));
-  const checks = tags.map(t => normalized.has(String(t).toLowerCase()));
-  return mode === 'OR' ? checks.some(Boolean) : checks.every(Boolean);
-}
-
-function sortItems(items, sort, favoriteFirst) {
-  const arr = [...items];
-  if (favoriteFirst) {
-    arr.sort((a,b) => Number(b._favorite) - Number(a._favorite));
-  }
-  arr.sort((a,b) => {
-    if (sort === 'name') return a.name.localeCompare(b.name);
-    if (sort === 'creator') return a.creator.localeCompare(b.creator);
-    if (sort === 'created') return Number(b.createdAt) - Number(a.createdAt);
-    return Number(b.updatedAt) - Number(a.updatedAt);
-  });
-  return arr;
-}
-
-async function listLibrary(payload={}) {
-  const { data } = await spindle.characters.list({ limit: 200, offset: 0 });
-  const all = (Array.isArray(data) ? data : []).map(toSummary);
-
-  const sources = await getSources();
-  const favorites = new Set((await storageGet('favorites.v2', []) || []).map(String));
-
-  let items = all.map(item => ({ ...item, _favorite: favorites.has(String(item.id)) }));
-  const sourceId = cleanString(payload.sourceId);
-  if (sourceId) items = items.filter(item => item.sourceId === sourceId);
-  if (payload.query) items = items.filter(item => matchesQuery(item, payload.query));
-  items = items.filter(item => matchesTags(item, payload.tags || [], payload.tagMode || 'AND'));
-
-  const filtered = sortItems(items, payload.sort || (await getSettings()).defaultSort, payload.favoriteFirst);
-  const pageSize = Math.max(1, Math.min(100, Number(payload.pageSize || 30)));
-  const page = Math.max(1, Number(payload.page || 1));
-  const start = (page - 1) * pageSize;
-
-  const tagCounts = {};
-  for (const item of filtered) for (const tag of item.tags || []) {
-    const key = String(tag);
-    tagCounts[key] = (tagCounts[key] || 0) + 1;
-  }
-
-  return {
-    items: filtered.slice(start, start + pageSize),
-    total: filtered.length,
-    page,
-    pageSize,
-    hasNext: start + pageSize < filtered.length,
-    sources: sources.filter(s => s.enabled),
-    facets: Object.entries(tagCounts)
-      .map(([tag,count]) => ({ tag, count }))
-      .sort((a,b) => b.count - a.count || a.tag.localeCompare(b.tag))
-      .slice(0, 80)
-  };
-}
-
-async function getCharacter(id) {
-  const char = await spindle.characters.get(String(id));
-  if (!char) throw new Error('Character no longer exists in the library.');
-  const sourceInfo = char.extensions?.[EXTENSION_ID] || {};
-  return {
-    ...char,
-    sourceInfo
-  };
-}
-
-async function setFavorite(id, favorite) {
-  const current = new Set((await storageGet('favorites.v2', []) || []).map(String));
-  if (favorite) current.add(String(id)); else current.delete(String(id));
-  await storageSet('favorites.v2', [...current]);
-  return [...current];
-}
-
-async function ensureSource(sourceId, sourceName) {
-  const sources = await getSources();
-  const id = String(sourceId || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 48) || 'local';
-  const name = String(sourceName || 'Local Cards').trim().slice(0, 80) || 'Local Cards';
-  if (!sources.some(s => s.id === id)) {
-    sources.push({
-      id,
-      name,
-      kind: id === 'local' ? 'local' : 'custom',
-      enabled: true,
-      description: id === 'local' ? 'Character cards imported from your device.' : `Imported cards grouped under ${name}.`,
-      accent: id === 'local' ? '#7c5cff' : '#2fd39a'
-    });
-    await saveSources(sources);
-  }
-  return id;
-}
-
-async function importCardData(raw, sourceLabel='Local Cards', sourceId='local', originalName='') {
-  if (!raw || typeof raw !== 'object') throw new Error('The selected card is not valid JSON.');
-  const cardRoot = raw?.data && typeof raw.data === 'object' ? raw.data : raw;
-  if (looksExplicit(raw) || looksExplicit(cardRoot)) {
-    throw new Error('This extension only imports cards that do not declare mature/adult content in their metadata.');
-  }
-
-  sourceId = await ensureSource(sourceId, sourceLabel);
-  const card = normalizeCard(cardRoot, sourceLabel);
-  card.extensions[EXTENSION_ID] = {
-    imported_source: sourceLabel,
-    imported_source_id: sourceId,
-    imported_at: Math.floor(Date.now() / 1000),
-    original_name: originalName || card.name
-  };
-
-  const imported = await spindle.characters.create(card);
-  return { character: imported, characterName: imported?.name || card.name };
-}
-
-function bytesFromBase64(base64) {
-  const bin = atob(base64);
-  const out = new Uint8Array(bin.length);
-  for (let i=0; i<bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-spindle.onFrontendMessage(async (msg, userId) => {
-  const { action, payload = {}, requestId } = msg || {};
-  try {
-    let result;
-
-    switch (action) {
-      case 'BOOT':
-        result = { settings: await getSettings(), sources: await getSources() };
-        break;
-
-      case 'SAVE_SETTINGS':
-        result = { settings: await saveSettings(payload) };
-        break;
-
-      case 'SAVE_SOURCES':
-        result = { sources: await saveSources(payload.sources) };
-        break;
-
-      case 'LIST_LIBRARY':
-        result = await listLibrary(payload);
-        break;
-
-      case 'GET_CHARACTER':
-        result = { character: await getCharacter(payload.id) };
-        break;
-
-      case 'SET_FAVORITE':
-        result = { favorites: await setFavorite(payload.id, Boolean(payload.favorite)) };
-        break;
-
-      case 'IMPORT_JSON':
-        result = await importCardData(payload.card, payload.sourceName || 'Local Cards', payload.sourceId || 'local', payload.fileName || '');
-        break;
-
-      case 'IMPORT_FILE_BASE64': {
-        const sourceName = payload.sourceName || 'Local Cards';
-        const sourceId = await ensureSource(
-          payload.sourceId || String(sourceName).toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 48) || 'local',
-          sourceName
-        );
-        const bytes = bytesFromBase64(String(payload.base64 || ''));
-        const imported = await spindle.characters.importFile(bytes.buffer);
-        const importedId = imported?.id;
-        if (importedId && spindle.characters.update) {
-          try {
-            await spindle.characters.update(importedId, {
-              extensions: {
-                [EXTENSION_ID]: {
-                  imported_source: sourceName,
-                  imported_source_id: sourceId,
-                  imported_at: Math.floor(Date.now() / 1000),
-                  original_file: payload.fileName || ''
-                }
-              }
-            });
-          } catch {}
-        }
-        result = { character: imported, characterName: imported?.name || payload.fileName || 'Imported Character' };
-        break;
-      }
-
-      case 'DELETE_CHARACTER':
-        result = { deleted: await spindle.characters.delete(String(payload.id)) };
-        break;
-
-      default:
-        throw new Error(`Unknown action: ${action}`);
-    }
-
-    spindle.sendToFrontend({ type: 'OK', requestId, result }, userId);
-  } catch (err) {
-    spindle.sendToFrontend({
-      type: 'ERROR',
-      requestId,
-      error: err?.message || 'Operation failed'
-    }, userId);
-  }
+spindle.onFrontendMessage(async(msg,userId)=>{
+  const {action,provider='chub',payload={},requestId}=msg||{};
+  try{
+    const p=providers[provider]; if(!p)throw new Error(`Unknown provider: ${provider}`);
+    if(action==='SEARCH'){ const results=await p.search(payload); return spindle.sendToFrontend({type:'SEARCH_RESULT',requestId,results:{characters:results,source:provider}},userId); }
+    if(action==='GET_DETAILS'){ const details=await p.details(payload.id); return spindle.sendToFrontend({type:'DETAILS_RESULT',requestId,details},userId); }
+    if(action==='IMPORT'){ const raw=await p.import(payload.id); let name='Character'; if(raw?.rawPngBuffer){const x=await spindle.characters.importFile(raw.rawPngBuffer);name=x?.name||name;} else {const d=normalize(raw,provider); const x=await spindle.characters.create({name:d.name||'Imported Character',description:d.description||'',personality:d.personality||'',scenario:d.scenario||'',first_mes:d.first_mes||'',mes_example:d.mes_example||'',creator_notes:d.creator_notes||'',system_prompt:d.system_prompt||'',post_history_instructions:d.post_history_instructions||'',tags:Array.isArray(d.tags)?d.tags:[],alternate_greetings:Array.isArray(d.alternate_greetings)?d.alternate_greetings:[],creator:d.creator||p.name,extensions:{[EXT]:{source:provider,sourceId:payload.id,sourceName:p.name,sourceUrl:payload.url||''}}}); name=x?.name||d.name||name;} return spindle.sendToFrontend({type:'IMPORT_SUCCESS',requestId,characterName:name,source:provider},userId); }
+    throw new Error('Unknown action');
+  }catch(e){ spindle.sendToFrontend({type:'ERROR',requestId,error:e?.message||'Operation failed'},userId); }
 });
