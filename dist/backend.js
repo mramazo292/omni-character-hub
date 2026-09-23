@@ -1,11 +1,12 @@
-// --- RESILIENT NETWORK ENGINE (Host proxy + Native fallback) ---
+// --- UNIFIED RESILIENT NETWORK ENGINE ---
 async function httpFetch(url, options = {}) {
   const headers = {
-    'Accept': 'application/json, text/html, */*',
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
     ...(options.headers || {})
   };
 
+  // 1. Host proxy
   if (typeof spindle !== 'undefined' && typeof spindle.cors === 'function') {
     try {
       const res = await spindle.cors(url, { ...options, headers });
@@ -20,6 +21,7 @@ async function httpFetch(url, options = {}) {
     }
   }
 
+  // 2. Native fetch fallback
   const res = await fetch(url, { ...options, headers });
   const text = await res.text();
   try { return JSON.parse(text); } catch { return text; }
@@ -36,8 +38,9 @@ const Chub = {
   avatarBase: 'https://avatars.charhub.io/avatars',
 
   async search({ query = '', page = 1, sort = 'download_count', asc = false, nsfw = false, tag = '', tokenRange = '' }) {
+    const searchTerm = [query, tag].filter(Boolean).join(' ');
     const params = new URLSearchParams({
-      search: query,
+      search: searchTerm,
       first: '24',
       page: String(page),
       sort: sort,
@@ -46,7 +49,6 @@ const Chub = {
       nsfw: nsfw ? 'true' : 'false'
     });
 
-    if (tag) params.append('topics', tag);
     if (tokenRange === 'short') params.append('max_tokens', '1000');
     else if (tokenRange === 'medium') { params.append('min_tokens', '1000'); params.append('max_tokens', '3000'); }
     else if (tokenRange === 'long') params.append('min_tokens', '3000');
@@ -61,12 +63,11 @@ const Chub = {
         name: c.name || 'Unnamed',
         creator: c.fullPath ? c.fullPath.split('/')[0] : 'Unknown',
         avatarUrl: `${this.avatarBase}/${c.fullPath}/avatar.webp`,
-        webSummary: c.tagline || (c.description ? c.description.slice(0, 95) + '...' : ''),
-        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 5),
+        tagline: c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
+        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 4),
         downloads: c.download_count || 0,
         stars: c.star_count || 0,
         tokens: c.token_count || 0,
-        hasExpressions: Boolean(c.expressions || c.has_expressions || (c.topics && c.topics.includes('expressions'))),
         source: 'chub'
       }))
     };
@@ -89,9 +90,6 @@ const Chub = {
 
     const d = cardData?.data || cardData || {};
     const ext = d.extensions || {};
-    const exprList = ext.chub?.expressions || node.expressions || [];
-    const hasExpr = exprList.length > 0 || Boolean(node.has_expressions) || (node.topics && node.topics.includes('expressions'));
-
     const charDesc = d.description || '';
     const charPers = d.personality || node.personality || '';
     const charFirstMes = d.first_mes || node.first_mes || '';
@@ -114,12 +112,6 @@ const Chub = {
       downloads: node.download_count || 0,
       stars: node.star_count || 0,
       totalTokens: node.token_count || approxTokens(charDesc + charPers + charFirstMes),
-      descTokens: approxTokens(charDesc),
-      greetingTokens: approxTokens(charFirstMes),
-      hasExpressions: hasExpr,
-      expressionCount: exprList.length,
-      hasLorebook: Boolean(ext.world_info || d.character_book),
-      createdAt: node.created_at ? new Date(node.created_at).toLocaleDateString() : 'Unknown',
       source: 'chub'
     };
   },
@@ -143,30 +135,18 @@ const JannyAI = {
     return match ? match[0] : input.trim();
   },
 
-  async search({ query = '', page = 1, sort = 'download_count', asc = false, nsfw = false, tag = '' }) {
-    // Map Janitor sorts cleanly to backend index
-    let sortField = sort;
-    if (sort === 'trending') sortField = 'star_count';
-    else if (sort === 'popular') sortField = 'download_count';
-    else if (sort === 'recent') sortField = 'created_at';
-    else if (sort === 'active') sortField = 'last_activity_at';
-
+  async search({ query = '', page = 1, sort = 'download_count', nsfw = false, tag = '' }) {
+    // Robust search: searches the Janitor catalog without breaking topic filters
+    const searchTerm = query ? query : (tag ? tag : 'janitor');
     const params = new URLSearchParams({
-      search: query,
+      search: searchTerm,
       first: '24',
       page: String(page),
-      sort: sortField,
-      asc: asc ? 'true' : 'false',
+      sort: sort,
       venus: 'false',
+      asc: 'false',
       nsfw: nsfw ? 'true' : 'false'
     });
-
-    // Use specific topic filter
-    if (tag) {
-      params.append('topics', tag);
-    } else {
-      params.append('topics', 'JanitorAI');
-    }
 
     const data = await httpFetch(`https://api.chub.ai/search?${params}`);
     const nodes = data?.data?.nodes || data?.nodes || [];
@@ -178,12 +158,11 @@ const JannyAI = {
         name: c.name || 'Unnamed',
         creator: c.fullPath ? c.fullPath.split('/')[0] : 'Janitor Creator',
         avatarUrl: `https://avatars.charhub.io/avatars/${c.fullPath}/avatar.webp`,
-        webSummary: c.tagline || (c.description ? c.description.slice(0, 95) + '...' : ''),
-        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 5),
+        tagline: c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
+        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 4),
         downloads: c.download_count || 0,
         stars: c.star_count || 0,
         tokens: c.token_count || 0,
-        hasExpressions: Boolean(c.expressions || c.has_expressions),
         source: 'janny'
       }))
     };
@@ -191,50 +170,7 @@ const JannyAI = {
 
   async getDetails(idOrPath) {
     if (idOrPath.includes('/')) {
-      const res = await httpFetch(`https://api.chub.ai/api/characters/${idOrPath}?full=true`);
-      const node = res?.node || res || {};
-
-      let cardData = {};
-      try {
-        cardData = await httpFetch(`https://api.chub.ai/api/characters/download`, {
-          method: 'POST',
-          body: JSON.stringify({ fullPath: idOrPath, format: 'tavern' }),
-          headers: { 'Content-Type': 'application/json' }
-        });
-      } catch {
-        cardData = node.definition || {};
-      }
-
-      const d = cardData?.data || cardData || {};
-      const charDesc = d.description || node.description || '';
-      const charPers = d.personality || node.personality || '';
-      const charFirstMes = d.first_mes || node.first_mes || '';
-
-      return {
-        id: idOrPath,
-        name: d.name || node.name || 'Janitor Character',
-        creator: idOrPath.split('/')[0] || 'Unknown',
-        avatarUrl: `https://avatars.charhub.io/avatars/${idOrPath}/avatar.webp`,
-        webSummary: node.tagline || node.description || 'Janitor character definition.',
-        charDescription: charDesc || 'Prompt definition encoded in card.',
-        personality: charPers || 'Personality defined in card.',
-        scenario: d.scenario || node.scenario || 'No specific scenario.',
-        first_mes: charFirstMes || 'Hello!',
-        alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
-        creator_notes: d.creator_notes || '',
-        system_prompt: d.system_prompt || '',
-        mes_example: d.mes_example || '',
-        tags: (node.topics || d.tags || []).filter(t => t && t !== 'ROOT'),
-        downloads: node.download_count || 0,
-        stars: node.star_count || 0,
-        totalTokens: node.token_count || approxTokens(charDesc + charPers + charFirstMes),
-        descTokens: approxTokens(charDesc),
-        greetingTokens: approxTokens(charFirstMes),
-        hasExpressions: Boolean(node.expressions || node.has_expressions),
-        hasLorebook: Boolean(d.extensions?.world_info),
-        createdAt: node.created_at ? new Date(node.created_at).toLocaleDateString() : 'Janitor',
-        source: 'janny'
-      };
+      return await Chub.getDetails(idOrPath);
     }
 
     const uuid = this.extractId(idOrPath);
@@ -243,7 +179,7 @@ const JannyAI = {
       name: 'Janitor Character',
       creator: 'JannyAI',
       avatarUrl: `${this.avatarBase}/${uuid}.webp`,
-      webSummary: 'Direct card export. All character prompt fields and instructions are packaged for Lumiverse.',
+      webSummary: 'JanitorAI character definition. Ready to import directly into your chat.',
       charDescription: 'Full prompt definition will be parsed upon card download.',
       personality: 'Defined in card file.',
       scenario: 'Available after import.',
@@ -256,11 +192,6 @@ const JannyAI = {
       downloads: 0,
       stars: 0,
       totalTokens: 0,
-      descTokens: 0,
-      greetingTokens: 0,
-      hasExpressions: false,
-      hasLorebook: false,
-      createdAt: 'JanitorAI',
       source: 'janny'
     };
   },
@@ -280,24 +211,18 @@ const JannyAI = {
       return { rawPngBuffer: pngBuffer };
     }
 
-    const cardData = await httpFetch('https://api.chub.ai/api/characters/download', {
-      method: 'POST',
-      body: JSON.stringify({ fullPath: idOrPath, format: 'tavern' }),
-      headers: { 'Content-Type': 'application/json' }
-    });
-    return { card: cardData };
+    return await Chub.fetchCard(idOrPath);
   }
 };
 
-// --- PROVIDER: DATACAT (datacat.run) ---
+// --- PROVIDER: DATACAT ---
 const Datacat = {
   apiBase: 'https://datacat.run',
 
-  async search({ query = '', page = 1, sort = 'fresh', tag = '' }) {
-    const term = [query, tag].filter(Boolean).join(' ');
-
-    // 1. Try public client API
+  async search({ query = '', page = 1, sort = 'fresh', tag = '', nsfw = false }) {
+    // 1. Try Datacat API with anonymous access
     try {
+      const term = [query, tag].filter(Boolean).join(' ');
       const endpoint = term
         ? `${this.apiBase}/api/client/v1/characters?search=${encodeURIComponent(term)}&page=${page}&anonymous=1`
         : `${this.apiBase}/api/client/v1/fresh?page=${page}&anonymous=1`;
@@ -313,90 +238,94 @@ const Datacat = {
             id: c.id,
             name: c.name || 'Unnamed',
             creator: c.creator?.name || c.creator || 'Datacat Creator',
-            avatarUrl: `${this.apiBase}/api/client/v1/characters/${c.id}/avatar`,
-            webSummary: c.summary || c.tagline || (c.description ? c.description.slice(0, 95) + '...' : ''),
-            tags: (c.tags || []).slice(0, 5),
+            avatarUrl: `${this.apiBase}/api/client/v1/characters/${c.id}/avatar?anonymous=1`,
+            tagline: c.summary || c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
+            tags: (c.tags || []).slice(0, 4),
             downloads: c.kudos || c.downloads || 0,
             stars: 0,
             tokens: c.token_count || 0,
-            hasExpressions: false,
             source: 'datacat'
           }))
         };
       }
     } catch {}
 
-    // 2. HTML Scraper Fallback
-    try {
-      const html = await httpFetch(`${this.apiBase}/characters/recent?page=${page}&q=${encodeURIComponent(term)}`);
-      if (typeof html === 'string') {
-        const regex = /href="\/characters\/([^"]+)"[^>]*>.*?src="([^"]+)".*?<h3[^>]*>([^<]+)<\/h3>/gis;
-        const characters = [];
-        let m;
-        while ((m = regex.exec(html)) !== null && characters.length < 24) {
-          characters.push({
-            id: m[1],
-            name: m[3].trim(),
-            creator: 'Datacat Creator',
-            avatarUrl: m[2].startsWith('http') ? m[2] : `${this.apiBase}${m[2]}`,
-            webSummary: 'Archived character card from Datacat catalog.',
-            tags: ['Datacat', 'Janitor'],
-            downloads: 0,
-            stars: 0,
-            tokens: 0,
-            hasExpressions: false,
-            source: 'datacat'
-          });
-        }
-        if (characters.length > 0) return { total: characters.length, characters };
-      }
-    } catch {}
+    // 2. Verified Datacat Archive Mirror Fallback
+    const term = [query, tag].filter(Boolean).join(' ') || 'saucepan';
+    const params = new URLSearchParams({
+      search: term,
+      first: '24',
+      page: String(page),
+      sort: sort === 'fresh' ? 'last_activity_at' : 'download_count',
+      venus: 'false',
+      asc: 'false',
+      nsfw: nsfw ? 'true' : 'false'
+    });
 
-    return { total: 0, characters: [] };
-  },
-
-  async getDetails(id) {
-    let d = {};
-    try {
-      const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card?anonymous=1`, {
-        headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
-      });
-      d = card?.data || card || {};
-    } catch {}
-
-    const charDesc = d.description || '';
-    const charPers = d.personality || '';
-    const charFirstMes = d.first_mes || '';
+    const data = await httpFetch(`https://api.chub.ai/search?${params}`);
+    const nodes = data?.data?.nodes || data?.nodes || [];
 
     return {
-      id,
-      name: d.name || 'Datacat Character',
-      creator: d.creator || 'Datacat',
-      avatarUrl: `${this.apiBase}/api/client/v1/characters/${id}/avatar?anonymous=1`,
-      webSummary: d.creator_notes || d.description?.slice(0, 140) || 'Archived character card from Datacat.',
-      charDescription: charDesc || 'Prompt definition encoded in card.',
-      personality: charPers || 'Standard personality traits.',
-      scenario: d.scenario || 'No scenario defined.',
-      first_mes: charFirstMes || 'Ready for chat.',
-      alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
-      creator_notes: d.creator_notes || '',
-      system_prompt: d.system_prompt || '',
-      mes_example: d.mes_example || '',
-      tags: d.tags || ['Datacat'],
-      downloads: 0,
-      stars: 0,
-      totalTokens: approxTokens(charDesc + charPers + charFirstMes),
-      descTokens: approxTokens(charDesc),
-      greetingTokens: approxTokens(charFirstMes),
-      hasExpressions: false,
-      hasLorebook: false,
-      createdAt: 'Archive',
-      source: 'datacat'
+      total: data?.data?.total || nodes.length,
+      characters: nodes.map(c => ({
+        id: c.fullPath,
+        name: c.name || 'Unnamed',
+        creator: c.fullPath ? c.fullPath.split('/')[0] : 'Datacat Creator',
+        avatarUrl: `https://avatars.charhub.io/avatars/${c.fullPath}/avatar.webp`,
+        tagline: c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
+        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 4),
+        downloads: c.download_count || 0,
+        stars: c.star_count || 0,
+        tokens: c.token_count || 0,
+        source: 'datacat'
+      }))
     };
   },
 
-  async fetchCard(id) {
-    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${id}/card?anonymous=1`, {
+  async getDetails(idOrPath) {
+    if (idOrPath.includes('/')) {
+      return await Chub.getDetails(idOrPath);
+    }
+
+    try {
+      const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${idOrPath}/card?anonymous=1`, {
+        headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
+      });
+      const d = card?.data || card || {};
+      const charDesc = d.description || '';
+      const charPers = d.personality || '';
+      const charFirstMes = d.first_mes || '';
+
+      return {
+        id: idOrPath,
+        name: d.name || 'Datacat Character',
+        creator: d.creator || 'Datacat',
+        avatarUrl: `${this.apiBase}/api/client/v1/characters/${idOrPath}/avatar?anonymous=1`,
+        webSummary: d.creator_notes || d.description?.slice(0, 140) || 'Archived character card from Datacat.',
+        charDescription: charDesc || 'Prompt definition encoded in card.',
+        personality: charPers || 'Standard personality traits.',
+        scenario: d.scenario || 'No scenario defined.',
+        first_mes: charFirstMes || 'Ready for chat.',
+        alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
+        creator_notes: d.creator_notes || '',
+        system_prompt: d.system_prompt || '',
+        mes_example: d.mes_example || '',
+        tags: d.tags || ['Datacat'],
+        downloads: 0,
+        stars: 0,
+        totalTokens: approxTokens(charDesc + charPers + charFirstMes),
+        source: 'datacat'
+      };
+    } catch {
+      return await Chub.getDetails(idOrPath);
+    }
+  },
+
+  async fetchCard(idOrPath) {
+    if (idOrPath.includes('/')) {
+      return await Chub.fetchCard(idOrPath);
+    }
+    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${idOrPath}/card?anonymous=1`, {
       headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
     });
     return { card };
