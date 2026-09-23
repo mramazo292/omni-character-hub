@@ -129,39 +129,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {activeTab === 'general' && (
             <div className="space-y-5">
-              {/* Content Safe Mode Toggle */}
+              {/* NSFW Mode Setting (Toggled ON by default) */}
               <div className="flex items-start justify-between rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
                 <div className="space-y-1 pr-4">
                   <div className="flex items-center gap-2">
-                    {preferences.safeMode ? (
-                      <Shield className="h-4 w-4 text-emerald-400" />
-                    ) : (
-                      <ShieldAlert className="h-4 w-4 text-amber-400" />
-                    )}
-                    <span className="text-sm font-semibold text-white">Safe Mode (SFW Filter)</span>
+                    <span className="text-base">🔞</span>
+                    <span className="text-sm font-semibold text-white">NSFW Mode</span>
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        preferences.safeMode
-                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
-                          : 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                        preferences.nsfw
+                          ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
+                          : 'bg-neutral-800 text-neutral-400 border-neutral-700'
                       }`}
                     >
-                      {preferences.safeMode ? 'Active (Filtered)' : 'Unfiltered (All)'}
+                      {preferences.nsfw ? 'Enabled (Default ON)' : 'Disabled (SFW Filtered)'}
                     </span>
                   </div>
                   <p className="text-xs text-neutral-400 leading-relaxed">
-                    When disabled, all community characters from Datacat, Janny AI, and Chub are displayed without restrictive keyword filtering.
+                    When toggled ON (default), all community characters from Chub.ai, Janny AI, and Datacat including NSFW cards and uncensored definitions are displayed without restriction.
                   </p>
                 </div>
                 <button
-                  onClick={() => onUpdatePreferences({ safeMode: !preferences.safeMode })}
+                  onClick={() => onUpdatePreferences({ nsfw: !preferences.nsfw })}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    preferences.safeMode ? 'bg-emerald-600' : 'bg-neutral-700'
+                    preferences.nsfw ? 'bg-rose-600' : 'bg-neutral-700'
                   }`}
                 >
                   <span
                     className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      preferences.safeMode ? 'translate-x-5' : 'translate-x-0'
+                      preferences.nsfw ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>

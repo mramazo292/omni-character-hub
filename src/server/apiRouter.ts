@@ -39,11 +39,12 @@ apiRouter.get('/datacat/characters', async (req, res) => {
     const offset = parseInt(req.query.offset as string) || 0;
     const tagIds = req.query.tagIds as string;
     const sort = req.query.sort as string;
+    const nsfw = req.query.nsfw !== undefined ? req.query.nsfw === 'true' : true;
 
     const data = await searchDatacatCharacters({ search, limit, offset, tagIds, sort });
 
     // Normalize into canonical shape
-    const characters = (data.characters || []).map((c: any) => ({
+    let characters = (data.characters || []).map((c: any) => ({
       id: c.characterId || c.character_id || c.id,
       sourceId: 'datacat',
       sourceName: 'Datacat',
@@ -72,6 +73,10 @@ apiRouter.get('/datacat/characters', async (req, res) => {
         avatarVariantUrls: c.avatarVariantUrls || c.avatar_variant_urls,
       },
     }));
+
+    if (!nsfw) {
+      characters = characters.filter((c: any) => !c.isNsfw);
+    }
 
     res.json({
       success: true,
@@ -194,8 +199,9 @@ apiRouter.get('/chub/characters', async (req, res) => {
     const offset = parseInt(req.query.offset as string) || 0;
     const sort = req.query.sort as string;
     const tag = req.query.tag as string;
+    const nsfw = req.query.nsfw !== undefined ? req.query.nsfw === 'true' : true;
 
-    const result = await searchChubCharacters({ search, limit, offset, sort, tag });
+    const result = await searchChubCharacters({ search, limit, offset, sort, tag, nsfw });
     res.json(result);
   } catch (err: any) {
     console.error('[API] Chub search error:', err.message);

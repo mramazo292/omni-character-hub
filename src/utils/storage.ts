@@ -8,7 +8,9 @@ export interface UserPreferences {
   viewMode: 'grid' | 'list';
   pageSize: number;
   safeMode: boolean;
+  nsfw: boolean; // Explicit NSFW setting, toggled ON by default
   activeSourceSpace: string;
+  lumiverseDrawerOpen?: boolean;
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -16,7 +18,9 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   viewMode: 'grid',
   pageSize: 24,
   safeMode: false,
+  nsfw: true, // TOGGLED ON BY DEFAULT as requested
   activeSourceSpace: 'All',
+  lumiverseDrawerOpen: false,
 };
 
 export function getLocalLibrary(): CharacterItem[] {
@@ -67,55 +71,79 @@ export function addCharacterToLibrary(
   return localItem;
 }
 
-export function removeCharacterFromLibrary(id: string): void {
+export function removeCharacterFromLibrary(id: string): CharacterItem[] {
   const library = getLocalLibrary().filter((c) => c.id !== id);
   saveLocalLibrary(library);
+  return library;
 }
 
-export function toggleCharacterFavorite(id: string): boolean {
-  const library = getLocalLibrary();
-  const item = library.find((c) => c.id === id);
-  if (!item) return false;
-
-  if (!item.localMetadata) {
-    item.localMetadata = {
-      importedAt: new Date().toISOString(),
-      originalFileName: 'card.json',
-      sourceSpace: 'My Archive',
-      isFavorite: true,
-    };
-  } else {
-    item.localMetadata.isFavorite = !item.localMetadata.isFavorite;
-  }
-
+export function toggleCharacterFavorite(id: string): CharacterItem[] {
+  const library = getLocalLibrary().map((c) => {
+    if (c.id === id && c.localMetadata) {
+      return {
+        ...c,
+        localMetadata: {
+          ...c.localMetadata,
+          isFavorite: !c.localMetadata.isFavorite,
+        },
+      };
+    }
+    return c;
+  });
   saveLocalLibrary(library);
-  return item.localMetadata.isFavorite;
+  return library;
 }
 
 export function getUserPreferences(): UserPreferences {
   try {
     const raw = localStorage.getItem(PREFERENCES_KEY);
-    return raw ? { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) } : DEFAULT_PREFERENCES;
+    if (!raw) return DEFAULT_PREFERENCES;
+    const parsed = JSON.parse(raw);
+    return {
+      ...DEFAULT_PREFERENCES,
+      ...parsed,
+      // Ensure NSFW is enabled by default if not explicitly set to false
+      nsfw: parsed.nsfw !== undefined ? Boolean(parsed.nsfw) : true,
+      safeMode: parsed.nsfw !== undefined ? !parsed.nsfw : false,
+    };
   } catch {
     return DEFAULT_PREFERENCES;
   }
 }
 
-export function saveUserPreferences(prefs: Partial<UserPreferences>): UserPreferences {
+export function saveUserPreferences(
+  prefs: Partial<UserPreferences>
+): UserPreferences {
+  const current = getUserPreferences();
+  // Keep nsfw and safeMode in sync (nsfw = !safeMode)
+  let nsfw = current.nsfw;
+  let safeMode = current.safeMode;
+
+  if (prefs.nsfw !== undefined) {
+    nsfw = Boolean(prefs.nsfw);
+    safeMode = !nsfw;
+  } else if (prefs.safeMode !== undefined) {
+    safeMode = Boolean(prefs.safeMode);
+    nsfw = !safeMode;
+  }
+
+  const updated: UserPreferences = {
+    ...current,
+    ...prefs,
+    nsfw,
+    safeMode,
+  };
   try {
-    const current = getUserPreferences();
-    const updated = { ...current, ...prefs };
     localStorage.setItem(PREFERENCES_KEY, JSON.stringify(updated));
-    return updated;
-  } catch {
-    return DEFAULT_PREFERENCES;
+  } catch (err) {
+    console.error('Failed to save preferences:', err);
   }
+  return updated;
 }
 
-export function getUniqueSourceSpaces(library: CharacterItem[]): string[] {
-  const spaces = new Set<string>();
-  spaces.add('All');
-  library.forEach((item) => {
+export function getUniqueSourceSpaces(items: CharacterItem[]): string[] {
+  const spaces = new Set<string>(['All']);
+  items.forEach((item) => {
     if (item.localMetadata?.sourceSpace) {
       spaces.add(item.localMetadata.sourceSpace);
     }

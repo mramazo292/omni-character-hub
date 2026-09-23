@@ -33,6 +33,8 @@ interface FilterBarProps {
   onSelectSpace?: (space: string) => void;
   totalResultsCount?: number;
   isLoading?: boolean;
+  nsfw?: boolean;
+  onToggleNsfw?: (val: boolean) => void;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -52,6 +54,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onSelectSpace,
   totalResultsCount,
   isLoading,
+  nsfw = true,
+  onToggleNsfw,
 }) => {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -86,10 +90,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         ];
       case 'chub':
         return [
-          { value: 'download_count', label: 'Most Downloaded' },
-          { value: 'rating', label: 'Highest Rated' },
-          { value: 'star_count', label: 'Most Starred' },
-          { value: 'created_at', label: 'Newest Cards' },
+          { value: 'download_count', label: '🔥 Most Popular' },
+          { value: 'star_count', label: '⭐ Top Rated' },
+          { value: 'last_activity_at', label: '✨ Recently Active' },
+          { value: 'created_at', label: '📅 Newly Added' },
         ];
       case 'local':
         return [
@@ -108,7 +112,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       case 'janitor':
         return { label: 'Janny AI Archive', color: 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10' };
       case 'chub':
-        return { label: 'Chub.ai Repository', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' };
+        return { label: 'Chub.ai Repository', color: 'border-rose-500/30 text-rose-400 bg-rose-500/10' };
       case 'local':
         return { label: 'Local Persistent Storage', color: 'border-amber-500/30 text-amber-400 bg-amber-500/10' };
     }
@@ -194,11 +198,30 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             </select>
           </div>
 
+          {/* Explicit NSFW Setting Toggle Checkbox (Toggled ON by default) */}
+          {onToggleNsfw !== undefined && (
+            <label className="flex items-center gap-1.5 cursor-pointer select-none rounded-xl border border-neutral-800 bg-neutral-900/90 px-3 py-2 text-xs font-semibold hover:border-neutral-700 transition-colors">
+              <input
+                type="checkbox"
+                id="omni-filter-nsfw"
+                checked={nsfw}
+                onChange={(e) => onToggleNsfw(e.target.checked)}
+                className="h-3.5 w-3.5 accent-[#e11d48] rounded cursor-pointer"
+              />
+              <span className={nsfw ? 'text-rose-400' : 'text-neutral-400'}>NSFW</span>
+              <span className={`text-[9px] px-1 py-0.2 rounded font-mono ${nsfw ? 'bg-rose-500/20 text-rose-300' : 'bg-neutral-800 text-neutral-500'}`}>
+                {nsfw ? 'ON' : 'OFF'}
+              </span>
+            </label>
+          )}
+
           {/* Source indicator */}
           <div className={`hidden sm:flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium ${badge.color}`}>
             <span>{badge.label}</span>
             {typeof totalResultsCount === 'number' && (
-              <span className="opacity-80">({totalResultsCount})</span>
+              <span className="rounded-full bg-neutral-800 px-1.5 py-0.2 text-[10px] font-bold text-neutral-300">
+                {totalResultsCount}
+              </span>
             )}
           </div>
         </div>
@@ -206,13 +229,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       {/* Tags Filter Row */}
       {availableTags.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-xl border border-neutral-800/80 bg-neutral-900/40 p-3">
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 text-neutral-400">
+        <div className="flex flex-col gap-2 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Tag className="h-3.5 w-3.5 text-neutral-400" />
-              <span className="font-semibold text-neutral-300">
-                Source Tags & Facets
-              </span>
+              <span className="text-xs font-semibold text-neutral-300">Popular Tags</span>
               {selectedTags.length > 0 && (
                 <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-300">
                   {selectedTags.length} active
@@ -220,42 +241,41 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* AND / OR Match Mode Toggle */}
-              {selectedTags.length > 1 && (
-                <button
-                  onClick={onToggleTagMatchMode}
-                  className="rounded-md border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-[10px] font-semibold text-neutral-300 hover:bg-neutral-700 transition-colors"
-                >
-                  Match: <span className="text-indigo-400 uppercase">{tagMatchMode}</span>
-                </button>
+            <div className="flex items-center gap-3 text-xs">
+              {source === 'datacat' && selectedTags.length > 1 && (
+                <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                  <span>Match:</span>
+                  <button
+                    onClick={onToggleTagMatchMode}
+                    className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-[10px] font-bold text-neutral-200 hover:bg-neutral-700 uppercase"
+                  >
+                    {tagMatchMode}
+                  </button>
+                </div>
               )}
 
-              {/* Clear Tags */}
               {selectedTags.length > 0 && (
                 <button
                   onClick={onClearTags}
-                  className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-200 transition-colors"
+                  className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
                 >
-                  <X className="h-3 w-3" />
-                  <span>Clear</span>
+                  Clear all
                 </button>
               )}
             </div>
           </div>
 
-          {/* Tag Chips List */}
-          <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+          <div className="flex flex-wrap gap-1.5 pt-1">
             {availableTags.map((tag) => {
-              const isSelected = selectedTags.includes(tag.name) || selectedTags.includes(tag.slug);
+              const isSelected = selectedTags.includes(String(tag.id)) || selectedTags.includes(tag.slug) || selectedTags.includes(tag.name);
               return (
                 <button
-                  key={tag.id || tag.slug}
-                  onClick={() => onToggleTag(tag.name)}
+                  key={tag.id}
+                  onClick={() => onToggleTag(String(tag.slug || tag.id))}
                   className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
                     isSelected
-                      ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-400'
-                      : 'border border-neutral-800 bg-neutral-800/60 text-neutral-400 hover:border-neutral-700 hover:bg-neutral-800 hover:text-neutral-200'
+                      ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-500'
+                      : 'border border-neutral-800/80 bg-neutral-900/80 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
                   }`}
                 >
                   {tag.name}

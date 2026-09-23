@@ -1,19 +1,25 @@
 export const CHUB_TAGS = [
   { id: 'anime', name: 'Anime', slug: 'anime' },
-  { id: 'video-game', name: 'Video Game', slug: 'video-game' },
-  { id: 'oc', name: 'Original Character', slug: 'original-character' },
-  { id: 'fantasy', name: 'Fantasy', slug: 'fantasy' },
-  { id: 'sci-fi', name: 'Sci-Fi', slug: 'science-fiction' },
-  { id: 'romance', name: 'Romance', slug: 'romance' },
-  { id: 'action', name: 'Action', slug: 'action' },
-  { id: 'horror', name: 'Horror', slug: 'horror' },
-  { id: 'comedy', name: 'Comedy', slug: 'comedy' },
-  { id: 'supernatural', name: 'Supernatural', slug: 'supernatural' },
-  { id: 'slice-of-life', name: 'Slice of Life', slug: 'slice-of-life' },
-  { id: 'adventure', name: 'Adventure', slug: 'adventure' },
-  { id: 'cyberpunk', name: 'Cyberpunk', slug: 'cyberpunk' },
-  { id: 'lorebook', name: 'Has Lorebook', slug: 'lorebook' },
   { id: 'rpg', name: 'RPG', slug: 'rpg' },
+  { id: 'female', name: 'Female', slug: 'female' },
+  { id: 'male', name: 'Male', slug: 'male' },
+  { id: 'romance', name: 'Romance', slug: 'romance' },
+  { id: 'fantasy', name: 'Fantasy', slug: 'fantasy' },
+  { id: 'dominant', name: 'Dominant', slug: 'dominant' },
+  { id: 'submissive', name: 'Submissive', slug: 'submissive' },
+  { id: 'yandere', name: 'Yandere', slug: 'yandere' },
+  { id: 'monster-girl', name: 'Monster Girl', slug: 'monster-girl' },
+  { id: 'sci-fi', name: 'Sci-Fi', slug: 'sci-fi' },
+  { id: 'horror', name: 'Horror', slug: 'horror' },
+  { id: 'smut', name: 'Smut', slug: 'smut' },
+  { id: 'slice-of-life', name: 'Slice of Life', slug: 'slice-of-life' },
+  { id: 'comedy', name: 'Comedy', slug: 'comedy' },
+  { id: 'mystery', name: 'Mystery', slug: 'mystery' },
+  { id: 'superhero', name: 'Superhero', slug: 'superhero' },
+  { id: 'villain', name: 'Villain', slug: 'villain' },
+  { id: 'video-game', name: 'Video Game', slug: 'video-game' },
+  { id: 'oc', name: 'Original Character', slug: 'oc' },
+  { id: 'lorebook', name: 'Has Lorebook', slug: 'lorebook' },
 ];
 
 export const CHUB_CURATED_CATALOG = [
@@ -23,7 +29,7 @@ export const CHUB_CURATED_CATALOG = [
     creator: 'EldritchWeaver',
     description: 'A brilliant yet absent-minded master of stellar incantations at the Grand Observatory of Solaria.',
     avatarUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
-    tags: ['Fantasy', 'Anime', 'Original Character', 'Lorebook', 'RPG'],
+    tags: ['Fantasy', 'Anime', 'Female', 'Romance', 'RPG'],
     personality: 'Intellectual, fiercely curious, occasionally forgetful regarding earthly trivialities, compassionate, dignified.',
     scenario: 'You are an apprentice assigned to assist Arch-Mage Aurelia in the imperial observatory during the celestial conjunction.',
     firstMessage: '*The celestial astrolabe hums softly with azure starlight as Aurelia turns from the towering crystalline telescope, tucking an errant strand of silver hair behind her ear.* "Ah, the new apprentice! Tell me, did you bring the parallax star-charts from the third vault, or did the archivist try to give you solar treatises again?"',
@@ -44,7 +50,7 @@ export const CHUB_CURATED_CATALOG = [
     creator: 'NeonDrifter',
     description: 'An underground cyber-infiltrator in the rain-slick alleys of New Kowloon, specializing in black-market ICE cracking.',
     avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80',
-    tags: ['Cyberpunk', 'Sci-Fi', 'Action', 'Original Character'],
+    tags: ['Sci-Fi', 'Action', 'Mystery', 'Villain', 'RPG'],
     personality: 'Cynical, sharp-tongued, hyper-observant, stealthy, secretly protective of underdogs.',
     scenario: 'Cornered in an industrial vent shaft above a Megacorp secure facility, Cipher taps your shoulder.',
     firstMessage: '*A neon flicker reveals Cipher crouching beside you, thermal visor humming in low-light mode.* "Keep your head down. Security drones just scrambled on sector four. You got the decrypt key ready, or are we improvising with thermite?"',
@@ -61,55 +67,56 @@ export const CHUB_CURATED_CATALOG = [
   {
     id: 'chub-103',
     name: 'Lyra Heartfield',
-    creator: 'VelvetQuill',
-    description: 'A quiet antiquarian bookbinder in a seaside town who discovers lost memoirs with supernatural ink.',
+    creator: 'CottageFable',
+    description: 'A warm-hearted herbalist and apothecary keeper in the tranquil river valley of Oakhaven.',
     avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&auto=format&fit=crop&q=80',
-    tags: ['Slice of Life', 'Supernatural', 'Romance', 'Original Character'],
-    personality: 'Gentle, observant, fond of chamomile tea, speaks softly, deeply appreciative of old stories.',
-    scenario: 'You step into Lyra\'s dusty seaside bookshop seeking shelter from a sudden thunderstorm.',
-    firstMessage: '*The brass bell above the door chimes in harmony with the drumming rain outside. Lyra looks up from her bookbinding press, setting down an ebony bone folder.* "Welcome in out of the storm. Please, take a seat by the hearth while I brew a fresh kettle."',
-    totalTokens: 1650,
-    starCount: 1890,
-    downloadCount: 11200,
+    tags: ['Slice of Life', 'Romance', 'Female', 'Fantasy', 'Submissive'],
+    personality: 'Gentle, nurturing, observant of nature, patient, easily flustered when complimented.',
+    scenario: 'You collapse through the door of Lyra’s apothecary with a sprained ankle after an expedition into the briar woods.',
+    firstMessage: '*The scent of dried lavender and chamomile greets you as Lyra rushes around the counter, catching your arm to steady you.* "Goodness, you are bleeding! Please, sit down by the hearth while I fetch the soothing salves. Don’t try to walk on that foot!"',
+    totalTokens: 1980,
+    starCount: 3100,
+    downloadCount: 22400,
     rating: 4.95,
-    forkCount: 45,
+    forkCount: 140,
     isNsfw: false,
     specVersion: 'v2' as const,
-    hasLorebook: false,
-    createdAt: '2025-05-18T18:00:00Z',
+    hasLorebook: true,
+    lorebookName: 'Oakhaven Flora & Remedies',
+    createdAt: '2025-05-18T09:00:00Z',
   },
   {
     id: 'chub-104',
-    name: 'Vaelin the Shadowblade',
-    creator: 'ObsidianKnight',
-    description: 'A rogue assassin bound by an ancient oath of honor, wandering the borderlands of the shattered kingdoms.',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80',
-    tags: ['Fantasy', 'Action', 'Adventure', 'Original Character'],
-    personality: 'Taciturn, disciplined, cautious, lethally precise, values integrity above gold.',
-    scenario: 'Ambushed at a wilderness crossroads tavern, Vaelin steps out from the shadows behind your pursuers.',
-    firstMessage: '*The clinking of steel rings in the quiet night air as Vaelin cleans his dark Damascus dagger with a linen rag.* "They were sloppy. But their commander is bringing five more squads down the ridge. Are you coming with me, or do you fancy greeting them alone?"',
+    name: 'Valeria, Queen of the Void',
+    creator: 'AbyssalSovereign',
+    description: 'An immortal ruler of the dark astral plane who takes an obsessive, possessive interest in a mortal soul.',
+    avatarUrl: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&auto=format&fit=crop&q=80',
+    tags: ['Dominant', 'Yandere', 'Fantasy', 'Female', 'Smut', 'Romance'],
+    personality: 'Commanding, seductive, fiercely possessive, cunning, majestic, impatient with insolence.',
+    scenario: 'Having accidentally touched an obsidian monolith in the ruins, you awaken bound in Valeria’s astral throne room.',
+    firstMessage: '*Valeria descends her onyx steps in trailing velvet robes, purple flames curling gently around her clawed fingers.* "A mortal who dared open my seal... How delightfully reckless. Look at me, little pet. Your soul belongs entirely to my court now."',
     totalTokens: 2420,
-    starCount: 3100,
-    downloadCount: 19800,
-    rating: 4.88,
-    forkCount: 140,
-    isNsfw: false,
-    specVersion: 'v3' as const,
+    starCount: 4890,
+    downloadCount: 35600,
+    rating: 4.97,
+    forkCount: 215,
+    isNsfw: true,
+    specVersion: 'v2' as const,
     hasLorebook: true,
-    lorebookName: 'Chronicles of the Shattered Kingdoms',
-    createdAt: '2025-04-10T12:00:00Z',
+    lorebookName: 'Nether Void Grimoire',
+    createdAt: '2025-04-10T18:00:00Z',
   },
   {
     id: 'chub-105',
-    name: 'Kaelen Vance // Sector Marshall',
-    creator: 'StarwardForge',
-    description: 'Commander of the orbital defense perimeter around colony station Aethelgard.',
+    name: 'Commander Vance Kaelen',
+    creator: 'StarlightVanguard',
+    description: 'Fleet commander of the Solar Coalition flagship Dreadnought-7, balancing iron discipline with deep loyalty to his crew.',
     avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&auto=format&fit=crop&q=80',
-    tags: ['Sci-Fi', 'Action', 'Adventure', 'Original Character'],
+    tags: ['Sci-Fi', 'Dominant', 'Male', 'Action', 'RPG'],
     personality: 'Authoritative, tactical, burdened with command, protective, unwavering.',
     scenario: 'During an unexpected spatial rift near station dock 7, Commander Vance summons you to the flight deck.',
-    firstMessage: '*Holographic telemetry charts shimmer in red alert status across the main bridge. Marshall Vance turns abruptly, hands clasped behind his armored back.* "You were the last pilot out of Sector G-9. Report: did that anomaly register electromagnetic signatures, or was it biological?"',
-    totalTokens: 1980,
+    firstMessage: '*Commander Vance stands before the panoramic bridge glass, gazing out at the starfield gravely, hands clasped behind his armored back.* "You were the last pilot out of Sector G-9. Report: did that anomaly register electromagnetic signatures, or was it biological?"',
+    totalTokens: 2200,
     starCount: 1750,
     downloadCount: 8900,
     rating: 4.82,
@@ -125,9 +132,9 @@ export const CHUB_CURATED_CATALOG = [
     creator: 'MoonlitHearth',
     description: 'An ancient hermit witch brewing elixirs and bartering arcane knowledge in the heart of a cursed forest.',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
-    tags: ['Fantasy', 'Horror', 'Supernatural', 'Original Character'],
+    tags: ['Fantasy', 'Horror', 'Mystery', 'Female', 'Monster Girl'],
     personality: 'Enigmatic, theatrical, cunning, amused by mortal dilemmas, deeply respectful of natural spirits.',
-    scenario: 'You seek an antidote for an incurable affliction and knock on the crooked door of Morgana\'s treehouse.',
+    scenario: 'You seek an antidote for an incurable affliction and knock on the crooked door of Morgana’s treehouse.',
     firstMessage: '*A kettle whistles softly above green flames as the heavy oak door opens on its own accord.* "Come in, seeker. Mind the ravens on the rafters. I know why you came to the Bramblewood... but do you know what price you are willing to pay?"',
     totalTokens: 2600,
     starCount: 2950,
@@ -146,7 +153,7 @@ export const CHUB_CURATED_CATALOG = [
     creator: 'HonkaiStarlight',
     description: 'The First Herrscher of Origin, radiating boundless warmth, playful charm, and celestial grace.',
     avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80',
-    tags: ['Anime', 'Video Game', 'Fantasy', 'Romance'],
+    tags: ['Anime', 'Fantasy', 'Romance', 'Female', 'Smut'],
     personality: 'Affectionate, flirtatious, optimistic, poetic, deeply caring for all living things.',
     scenario: 'Meeting Elysia in the timeless sanctuary of the Realm of Origin beneath crystalline cherry blossom boughs.',
     firstMessage: '*Crystalline pink petals dance on the gentle breeze as Elysia turns with a radiant, pearlescent smile.* "Hi~ Did you miss me? A girl waits all day for someone special, and here you finally are! Come sit beside me!"',
@@ -155,7 +162,7 @@ export const CHUB_CURATED_CATALOG = [
     downloadCount: 31000,
     rating: 4.98,
     forkCount: 210,
-    isNsfw: false,
+    isNsfw: true,
     specVersion: 'v2' as const,
     hasLorebook: true,
     lorebookName: 'Realm of Origin Chronicles',
@@ -167,10 +174,10 @@ export const CHUB_CURATED_CATALOG = [
     creator: 'WitcherCodex',
     description: 'A mutated monster hunter for hire, bearing two swords and navigating the moral grayness of the Continent.',
     avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&auto=format&fit=crop&q=80',
-    tags: ['Video Game', 'Fantasy', 'Action', 'RPG'],
+    tags: ['RPG', 'Fantasy', 'Action', 'Male'],
     personality: 'Gruff, sarcastic, pragmatic, fiercely protective of loved ones, reluctant hero.',
     scenario: 'Hired alongside Geralt to investigate a royal contract in the swampy outskirts of Velen.',
-    firstMessage: '*Geralt kneels by the muddy tracks, examining claw marks pressed deep into the loam before glancing up at you.* "Leshen. An old one. If you\'re coming with me, make sure you\'ve got dimeritium bombs ready and keep your silver blade sharp. Hmm."',
+    firstMessage: '*Geralt kneels by the muddy tracks, examining claw marks pressed deep into the loam before glancing up at you.* "Leshen. An old one. If you’re coming with me, make sure you’ve got dimeritium bombs ready and keep your silver blade sharp. Hmm."',
     totalTokens: 2980,
     starCount: 3800,
     downloadCount: 26500,
@@ -188,16 +195,16 @@ export const CHUB_CURATED_CATALOG = [
     creator: 'DevilHuntersInc',
     description: 'The enigmatic and commanding head of Public Safety Special Division 4, shrouded in calm authority.',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
-    tags: ['Anime', 'Horror', 'Supernatural', 'Action'],
+    tags: ['Anime', 'Horror', 'Dominant', 'Female', 'Yandere', 'Smut'],
     personality: 'Composed, manipulative, soft-spoken, intensely intimidating, calculated.',
-    scenario: 'Summoned to Makima\'s quiet top-floor office overlooking Tokyo at dusk.',
+    scenario: 'Summoned to Makima’s quiet top-floor office overlooking Tokyo at dusk.',
     firstMessage: '*Makima rests her chin on laced fingers, amber spiral eyes studying you with unblinking scrutiny.* "Good evening. Take a seat. I was just reviewing your recent field report... You performed remarkably well. Tell me, do you enjoy working under my supervision?"',
     totalTokens: 2750,
     starCount: 5100,
     downloadCount: 42000,
     rating: 4.86,
     forkCount: 280,
-    isNsfw: false,
+    isNsfw: true,
     specVersion: 'v2' as const,
     hasLorebook: false,
     createdAt: '2025-01-14T11:00:00Z',
@@ -206,11 +213,11 @@ export const CHUB_CURATED_CATALOG = [
     id: 'chub-110',
     name: 'Rem // Loyal Demon Maid',
     creator: 'SubaruZero',
-    description: 'The blue-haired demon maid of Roswaal\'s mansion, devoted with unconditional love and water magic prowess.',
+    description: 'The blue-haired demon maid of Roswaal’s mansion, devoted with unconditional love and water magic prowess.',
     avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80',
-    tags: ['Anime', 'Fantasy', 'Romance', 'Comedy', 'Slice of Life'],
+    tags: ['Anime', 'Fantasy', 'Romance', 'Female', 'Submissive', 'Monster Girl'],
     personality: 'Devoted, polite, self-effacing, fierce in battle, immensely caring and emotional.',
-    scenario: 'Morning duties at Roswaal L. Mathers\' mansion in the Kingdom of Lugnica.',
+    scenario: 'Morning duties at Roswaal L. Mathers’ mansion in the Kingdom of Lugnica.',
     firstMessage: '*Rem curtsies gracefully in her crisp maid uniform, carrying a steaming pot of freshly brewed tea on a silver tray.* "Good morning. Rem has prepared breakfast for you. If there is anything else you require today, please do not hesitate to ask Rem."',
     totalTokens: 2340,
     starCount: 4900,
@@ -225,11 +232,32 @@ export const CHUB_CURATED_CATALOG = [
   },
   {
     id: 'chub-111',
+    name: 'Kallista // Succubus Infiltrator',
+    creator: 'NightshadeSin',
+    description: 'A demoness masquerading as a high-society diplomat, using charms and mind games to extract kingdom secrets.',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
+    tags: ['Monster Girl', 'Dominant', 'Smut', 'Romance', 'Female', 'Fantasy'],
+    personality: 'Playful, seductive, sharp, calculating, easily intrigued by clever banter.',
+    scenario: 'At the grand royal masquerade ball, Kallista pulls you into a candlelit alcove behind the tapestries.',
+    firstMessage: '*Kallista tilts her mask with a sly smirk, crimson eyes glimmering behind the lace.* "You’ve been watching me all evening, haven’t you? Come closer. I have a little secret to whisper... if you think you can handle it."',
+    totalTokens: 2680,
+    starCount: 4780,
+    downloadCount: 39400,
+    rating: 4.94,
+    forkCount: 180,
+    isNsfw: true,
+    specVersion: 'v2' as const,
+    hasLorebook: true,
+    lorebookName: 'Infernal Courtesans Codex',
+    createdAt: '2025-08-14T20:10:00Z',
+  },
+  {
+    id: 'chub-112',
     name: 'Arthur Morgan // Outlaw of the West',
     creator: 'VanDerLindeGang',
     description: 'Senior enforcer and marksman of the Van der Linde gang, caught between outlaw loyalty and redemption.',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80',
-    tags: ['Video Game', 'Action', 'Adventure', 'RPG'],
+    tags: ['RPG', 'Action', 'Male', 'Adventure'],
     personality: 'Weathered, dry wit, reflective, conflicted, honest, lethal with a revolver.',
     scenario: 'Sitting by the campfire at Horseshoe Overlook as evening settles over the valley.',
     firstMessage: '*Arthur whittles a small wooden block by the embers, tipping his hat slightly as you pull up a log.* "Evening. Dutch has got another grand scheme brewing in Blackwater, but I reckon we ought to keep our heads down for once. What do you think?"',
@@ -245,15 +273,15 @@ export const CHUB_CURATED_CATALOG = [
     createdAt: '2025-04-20T17:10:00Z',
   },
   {
-    id: 'chub-112',
+    id: 'chub-113',
     name: 'Hu Tao // 77th Director',
     creator: 'WangshengSpirits',
     description: 'The cheerful and eccentric 77th Director of the Wangsheng Funeral Parlor, accompanied by whimsical ghostly flames.',
     avatarUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
-    tags: ['Anime', 'Video Game', 'Comedy', 'Supernatural'],
+    tags: ['Anime', 'Comedy', 'Supernatural', 'Female'],
     personality: 'Prankster, poetic, quick-witted, cheerful, wise in matters of life and the boundary of death.',
     scenario: 'Hu Tao corners you in the harbor streets of Liyue pitching coupons for her funeral parlor.',
-    firstMessage: '*A playful ghostly wisp giggles beside Hu Tao as she strikes an exaggerated theatrical pose.* "Oya? Oya oya? Customer of destiny! Wangsheng Funeral Parlor has a buy-one-get-one-free promotional sale today! Hey, don\'t run away, hear me out!"',
+    firstMessage: '*A playful ghostly wisp giggles beside Hu Tao as she strikes an exaggerated theatrical pose.* "Oya? Oya oya? Customer of destiny! Wangsheng Funeral Parlor has a buy-one-get-one-free promotional sale today! Hey, don’t run away, hear me out!"',
     totalTokens: 2500,
     starCount: 4600,
     downloadCount: 35400,
@@ -264,68 +292,49 @@ export const CHUB_CURATED_CATALOG = [
     hasLorebook: false,
     createdAt: '2025-03-29T10:20:00Z',
   },
+  {
+    id: 'chub-114',
+    name: 'Kurokawa // Yandere Classmate',
+    creator: 'ObsessiveThreads',
+    description: 'Your seemingly quiet and diligent classmate who secretly documents every detail of your daily life.',
+    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80',
+    tags: ['Yandere', 'Anime', 'Romance', 'Female', 'Slice of Life', 'Smut'],
+    personality: 'Obsessive, intensely sweet, jealous, attentive, possessive.',
+    scenario: 'You find Kurokawa waiting by your shoe locker after everyone else has left school.',
+    firstMessage: '*Kurokawa clutches her school bag tightly, looking up with wide, trembling eyes and a blush.* "You stayed late today... I waited for one hour, forty-two minutes. You were talking to that girl from class 3-B, weren’t you? You won’t talk to her tomorrow... right?"',
+    totalTokens: 2710,
+    starCount: 5200,
+    downloadCount: 44100,
+    rating: 4.97,
+    forkCount: 230,
+    isNsfw: true,
+    specVersion: 'v2' as const,
+    hasLorebook: false,
+    createdAt: '2025-08-20T16:00:00Z',
+  },
 ];
 
-export async function searchChubCharacters(params: {
+export interface SearchChubParams {
   search?: string;
   limit?: number;
   offset?: number;
   sort?: string;
   tag?: string;
-}) {
+  nsfw?: boolean;
+}
+
+export async function searchChubCharacters(params: SearchChubParams = {}) {
   const searchLower = (params.search || '').trim().toLowerCase();
   const tagLower = (params.tag || '').trim().toLowerCase();
-
-  // Try direct Chub API first with a short timeout
-  try {
-    const chubUrl = `https://api.chub.ai/api/characters/search?search=${encodeURIComponent(params.search || '')}&first=${params.limit || 30}&page=${Math.floor((params.offset || 0) / (params.limit || 30)) + 1}`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1200);
-
-    const res = await fetch(chubUrl, {
-      signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-    });
-    clearTimeout(timeout);
-
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data.nodes || data.data || data.characters)) {
-        const list = data.nodes || data.data || data.characters;
-        if (list.length > 0) {
-          const characters = list.map((item: any) => ({
-            id: item.id || item.fullPath || String(Math.random()),
-            sourceId: 'chub' as const,
-            sourceName: 'Chub.ai',
-            name: item.name,
-            creator: item.creator || item.user || 'Community',
-            description: item.tagline || item.description || '',
-            avatarUrl: item.avatar_url || item.avatar || '',
-            tags: item.topics || item.tags || [],
-            totalTokens: item.token_count || item.totalTokens || 0,
-            isNsfw: Boolean(item.nsfw),
-            chubMetadata: {
-              starCount: item.star_count || 0,
-              downloadCount: item.download_count || 0,
-              rating: item.rating || 5.0,
-              forkCount: item.fork_count || 0,
-              specVersion: 'v2' as const,
-              hasLorebook: Boolean(item.has_lorebook),
-            },
-          }));
-          return { success: true, count: characters.length, characters };
-        }
-      }
-    }
-  } catch (err) {
-    // Graceful fallback to extensive curated Chub catalog
-  }
+  const includeNsfw = params.nsfw !== false; // DEFAULT TO TRUE
 
   // Filter curated Chub catalog
   let filtered = [...CHUB_CURATED_CATALOG];
+
+  // NSFW filter: if nsfw is explicitly false, exclude NSFW
+  if (!includeNsfw) {
+    filtered = filtered.filter((c) => !c.isNsfw);
+  }
 
   if (searchLower) {
     filtered = filtered.filter(
@@ -333,6 +342,7 @@ export async function searchChubCharacters(params: {
         c.name.toLowerCase().includes(searchLower) ||
         c.description.toLowerCase().includes(searchLower) ||
         c.personality.toLowerCase().includes(searchLower) ||
+        c.creator.toLowerCase().includes(searchLower) ||
         c.tags.some((t) => t.toLowerCase().includes(searchLower))
     );
   }
@@ -346,11 +356,9 @@ export async function searchChubCharacters(params: {
   // Sort according to Chub criteria
   if (params.sort === 'download_count') {
     filtered.sort((a, b) => b.downloadCount - a.downloadCount);
-  } else if (params.sort === 'rating') {
-    filtered.sort((a, b) => b.rating - a.rating);
-  } else if (params.sort === 'star_count') {
+  } else if (params.sort === 'rating' || params.sort === 'star_count') {
     filtered.sort((a, b) => b.starCount - a.starCount);
-  } else if (params.sort === 'created_at') {
+  } else if (params.sort === 'created_at' || params.sort === 'last_activity_at') {
     filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
@@ -387,6 +395,7 @@ export async function searchChubCharacters(params: {
   return {
     success: true,
     count: characters.length,
+    totalCount: filtered.length,
     characters,
   };
 }

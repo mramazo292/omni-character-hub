@@ -9,12 +9,10 @@ import {
   LogIn,
   ChevronLeft,
   ChevronRight,
-  Shield,
-  ShieldAlert,
   Bot,
-  ExternalLink,
 } from 'lucide-react';
 import { CharacterSource } from '../types/character.ts';
+import { RoseIcon } from './LumiverseDrawer.tsx';
 
 interface SidebarProps {
   activeSource: CharacterSource;
@@ -22,9 +20,10 @@ interface SidebarProps {
   savedCount: number;
   onOpenImport: () => void;
   onOpenSettings: () => void;
+  onOpenLumiverse: () => void;
   onEnterHub: () => void;
-  safeMode: boolean;
-  onToggleSafeMode: () => void;
+  nsfw: boolean;
+  onToggleNsfw: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -35,9 +34,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   savedCount,
   onOpenImport,
   onOpenSettings,
+  onOpenLumiverse,
   onEnterHub,
-  safeMode,
-  onToggleSafeMode,
+  nsfw,
+  onToggleNsfw,
   isCollapsed,
   onToggleCollapse,
 }) => {
@@ -56,16 +56,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="flex items-center gap-3 cursor-pointer group"
           title="Enter Omni Character Hub"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform flex-shrink-0">
-            <Bot className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-rose-600 via-rose-500 to-indigo-600 text-white shadow-md shadow-rose-500/20 group-hover:scale-105 transition-transform flex-shrink-0">
+            <RoseIcon size={22} />
           </div>
           {!isCollapsed && (
             <div className="flex flex-col overflow-hidden">
               <span className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1">
                 Omni Hub
-                <span className="rounded bg-indigo-500/20 text-indigo-400 text-[10px] px-1 py-0.2 font-mono">v2</span>
+                <span className="rounded bg-rose-500/20 text-rose-300 text-[10px] px-1 py-0.2 font-mono">Spindle</span>
               </span>
-              <span className="text-[11px] text-neutral-400 truncate">Character Explorer</span>
+              <span className="text-[11px] text-neutral-400 truncate">Lumiverse Extension</span>
             </div>
           )}
         </div>
@@ -89,30 +89,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
           <nav className="space-y-1">
-            {/* Datacat */}
+            {/* Chub.ai */}
             <button
-              onClick={() => onSelectSource('datacat')}
-              title="Datacat Native Index"
+              onClick={() => onSelectSource('chub')}
+              title="Chub.ai Repository"
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${
-                activeSource === 'datacat'
-                  ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30 shadow-sm'
+                activeSource === 'chub'
+                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30 shadow-sm'
                   : 'text-neutral-400 hover:bg-neutral-850 hover:text-neutral-200 border border-transparent'
               }`}
             >
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0 ${
-                  activeSource === 'datacat'
-                    ? 'bg-sky-500/20 text-sky-400'
+                  activeSource === 'chub'
+                    ? 'bg-rose-500/20 text-rose-400'
                     : 'bg-neutral-800/80 text-neutral-400'
                 }`}
               >
-                <Database className="h-4 w-4" />
+                <Compass className="h-4 w-4" />
               </div>
               {!isCollapsed && (
                 <div className="flex flex-1 items-center justify-between text-left">
-                  <span>Datacat</span>
-                  <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] text-sky-400 font-mono">
-                    Live
+                  <span>Chub.ai</span>
+                  <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] text-rose-400 font-mono">
+                    Tavern V2
                   </span>
                 </div>
               )}
@@ -147,30 +147,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </button>
 
-            {/* Chub.ai */}
+            {/* Datacat */}
             <button
-              onClick={() => onSelectSource('chub')}
-              title="Chub.ai Repository"
+              onClick={() => onSelectSource('datacat')}
+              title="Datacat Native Index"
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${
-                activeSource === 'chub'
-                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                activeSource === 'datacat'
+                  ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30 shadow-sm'
                   : 'text-neutral-400 hover:bg-neutral-850 hover:text-neutral-200 border border-transparent'
               }`}
             >
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0 ${
-                  activeSource === 'chub'
-                    ? 'bg-emerald-500/20 text-emerald-400'
+                  activeSource === 'datacat'
+                    ? 'bg-sky-500/20 text-sky-400'
                     : 'bg-neutral-800/80 text-neutral-400'
                 }`}
               >
-                <Compass className="h-4 w-4" />
+                <Database className="h-4 w-4" />
               </div>
               {!isCollapsed && (
                 <div className="flex flex-1 items-center justify-between text-left">
-                  <span>Chub.ai</span>
-                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-400 font-mono">
-                    Tavern V2
+                  <span>Datacat</span>
+                  <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] text-sky-400 font-mono">
+                    Live
                   </span>
                 </div>
               )}
@@ -178,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </nav>
         </div>
 
-        {/* Library & Tools Section */}
+        {/* Personal Space & Tools */}
         <div>
           {!isCollapsed && (
             <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
@@ -224,37 +224,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-800/80 text-neutral-400 flex-shrink-0">
                 <Upload className="h-4 w-4" />
               </div>
-              {!isCollapsed && (
-                <span className="text-left">Import Card</span>
-              )}
+              {!isCollapsed && <span className="text-left">Import Card</span>}
             </button>
           </nav>
         </div>
       </div>
 
-      {/* Bottom Section: Enter Hub Button & Settings */}
+      {/* Bottom Section: NSFW Setting Toggle, Lumiverse Button, Enter Hub & Settings */}
       <div className="border-t border-neutral-800/80 p-3 space-y-2 bg-[#090b10]">
-        {/* Quick SFW Filter Indicator */}
+        {/* Explicit NSFW Setting Toggle (Toggled ON by default) */}
         <button
-          onClick={onToggleSafeMode}
-          title={safeMode ? 'Safe Mode Active (Filtered)' : 'Safe Mode Disabled (Unfiltered)'}
-          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium border transition-all ${
-            safeMode
-              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-              : 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+          onClick={onToggleNsfw}
+          title={nsfw ? 'NSFW Enabled (All Characters)' : 'NSFW Disabled (SFW Filtered)'}
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold border transition-all ${
+            nsfw
+              ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+              : 'border-neutral-800 bg-neutral-900/60 text-neutral-400'
           }`}
         >
           <div className="flex h-7 w-7 items-center justify-center rounded-lg flex-shrink-0">
-            {safeMode ? <Shield className="h-4 w-4 text-emerald-400" /> : <ShieldAlert className="h-4 w-4 text-amber-400" />}
+            <span>🔞</span>
           </div>
           {!isCollapsed && (
             <div className="flex flex-1 items-center justify-between">
-              <span className="truncate">{safeMode ? 'Safe Filter: ON' : 'Unfiltered: ALL'}</span>
+              <span>NSFW Filter</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${nsfw ? 'bg-rose-600 text-white' : 'bg-neutral-800 text-neutral-400'}`}>
+                {nsfw ? 'ON' : 'OFF'}
+              </span>
             </div>
           )}
         </button>
 
-        {/* ENTER HUB BUTTON (Near Settings with Icon) */}
+        {/* LUMIVERSE ROSE BUTTON (Pinned right near Settings) */}
+        <button
+          id="omni-sidebar-rose-btn"
+          onClick={onOpenLumiverse}
+          title="Open Character Hub in Lumiverse Drawer Preset"
+          className="group relative flex w-full items-center gap-3 rounded-xl border border-rose-500/40 bg-gradient-to-r from-rose-950/70 to-neutral-900 px-3 py-2.5 text-xs font-bold text-rose-200 shadow-md shadow-rose-950/40 hover:border-rose-500/80 hover:bg-rose-900/40 transition-all active:scale-[0.98]"
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
+            <RoseIcon size={20} />
+          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col text-left overflow-hidden">
+              <span className="leading-tight text-white flex items-center gap-1">
+                Open in Lumiverse
+              </span>
+              <span className="text-[10px] font-normal text-rose-300 opacity-90 truncate">
+                Drawer Preset UI
+              </span>
+            </div>
+          )}
+        </button>
+
+        {/* ENTER HUB BUTTON */}
         <button
           onClick={onEnterHub}
           title="Enter Omni Character Hub"
@@ -266,12 +289,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!isCollapsed && (
             <div className="flex flex-col text-left overflow-hidden">
               <span className="leading-tight">Enter Hub</span>
-              <span className="text-[10px] font-normal text-indigo-100 opacity-90 truncate">Launch Explorer</span>
+              <span className="text-[10px] font-normal text-indigo-100 opacity-90 truncate">
+                Launch Explorer
+              </span>
             </div>
           )}
         </button>
 
-        {/* SETTINGS BUTTON (Right near Enter Hub) */}
+        {/* SETTINGS BUTTON (Right near Enter Hub & Lumiverse Rose) */}
         <button
           onClick={onOpenSettings}
           title="Hub Settings & Preferences"
@@ -280,9 +305,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-800/80 text-neutral-400 flex-shrink-0">
             <Settings className="h-4 w-4" />
           </div>
-          {!isCollapsed && (
-            <span className="text-left">Settings</span>
-          )}
+          {!isCollapsed && <span className="text-left">Settings</span>}
         </button>
       </div>
     </aside>

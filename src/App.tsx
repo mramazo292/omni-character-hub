@@ -19,6 +19,7 @@ import { Sidebar } from './components/Sidebar.tsx';
 import { FilterBar } from './components/FilterBar.tsx';
 import { CharacterCard } from './components/CharacterCard.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
+import { LumiverseDrawer } from './components/LumiverseDrawer.tsx';
 import { JanitorProfileModal } from './components/profiles/JanitorProfileModal.tsx';
 import { ChubProfileModal } from './components/profiles/ChubProfileModal.tsx';
 import { DatacatProfileModal } from './components/profiles/DatacatProfileModal.tsx';
@@ -56,6 +57,7 @@ export const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSidebarOpenMobile, setIsSidebarOpenMobile] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isLumiverseDrawerOpen, setIsLumiverseDrawerOpen] = useState(false);
 
   // Per-source search & filter states so each website is completely independent
   const [datacatQuery, setDatacatQuery] = useState('');
@@ -199,6 +201,7 @@ export const App: React.FC = () => {
         params.set('sort', datacatSort);
         params.set('offset', String((datacatPage - 1) * 30));
         params.set('limit', '30');
+        params.set('nsfw', preferences.nsfw ? 'true' : 'false');
 
         if (datacatSelectedTags.length > 0) {
           const tagIds = datacatTags
@@ -212,7 +215,7 @@ export const App: React.FC = () => {
         if (!res.ok) throw new Error(`Datacat request failed: ${res.statusText}`);
         const data = await res.json();
         let list: CharacterItem[] = data.characters || [];
-        if (preferences.safeMode) {
+        if (!preferences.nsfw) {
           list = list.filter((c) => !c.isNsfw);
         }
         setCharacters(list);
@@ -222,6 +225,7 @@ export const App: React.FC = () => {
         params.set('sort', jannySort);
         params.set('offset', String((jannyPage - 1) * 30));
         params.set('limit', '30');
+        params.set('nsfw', preferences.nsfw ? 'true' : 'false');
 
         if (jannySelectedTags.length > 0) {
           const matchingTag = jannyTags.find(
@@ -236,7 +240,7 @@ export const App: React.FC = () => {
         if (!res.ok) throw new Error(`Janny AI request failed: ${res.statusText}`);
         const data = await res.json();
         let list: CharacterItem[] = data.characters || [];
-        if (preferences.safeMode) {
+        if (!preferences.nsfw) {
           list = list.filter((c) => !c.isNsfw);
         }
         setCharacters(list);
@@ -246,6 +250,7 @@ export const App: React.FC = () => {
         params.set('sort', chubSort);
         params.set('offset', String((chubPage - 1) * 30));
         params.set('limit', '30');
+        params.set('nsfw', preferences.nsfw ? 'true' : 'false');
         if (chubSelectedTags.length > 0) {
           params.set('tag', chubSelectedTags[0]);
         }
@@ -254,7 +259,7 @@ export const App: React.FC = () => {
         if (!res.ok) throw new Error(`Chub request failed: ${res.statusText}`);
         const data = await res.json();
         let list: CharacterItem[] = data.characters || [];
-        if (preferences.safeMode) {
+        if (!preferences.nsfw) {
           list = list.filter((c) => !c.isNsfw);
         }
         setCharacters(list);
@@ -336,7 +341,7 @@ export const App: React.FC = () => {
     selectedSpace,
     tagMatchMode,
     localLibrary,
-    preferences.safeMode,
+    preferences.nsfw,
   ]);
 
   useEffect(() => {
@@ -598,8 +603,12 @@ export const App: React.FC = () => {
             handleEnterHub();
             setIsSidebarOpenMobile(false);
           }}
-          safeMode={preferences.safeMode}
-          onToggleSafeMode={() => handleUpdatePreferences({ safeMode: !preferences.safeMode })}
+          onOpenLumiverse={() => {
+            setIsLumiverseDrawerOpen(true);
+            setIsSidebarOpenMobile(false);
+          }}
+          nsfw={preferences.nsfw}
+          onToggleNsfw={() => handleUpdatePreferences({ nsfw: !preferences.nsfw })}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />
@@ -625,6 +634,7 @@ export const App: React.FC = () => {
           libraryCount={localLibrary.length}
           onOpenImport={() => setIsImportModalOpen(true)}
           onOpenSettings={() => setIsSettingsModalOpen(true)}
+          onOpenLumiverse={() => setIsLumiverseDrawerOpen(true)}
           onToggleSidebar={() => {
             // On desktop toggle collapse, on mobile toggle open
             if (window.innerWidth >= 768) {
@@ -710,6 +720,8 @@ export const App: React.FC = () => {
             onSelectSpace={setSelectedSpace}
             totalResultsCount={characters.length}
             isLoading={isLoading}
+            nsfw={preferences.nsfw}
+            onToggleNsfw={(val) => handleUpdatePreferences({ nsfw: val })}
           />
 
           {/* Content Section: Grid of Cards / Loading / Error */}
@@ -870,6 +882,15 @@ export const App: React.FC = () => {
         onExportLibrary={handleExportLibrary}
         onClearCache={handleClearCache}
         savedCount={localLibrary.length}
+      />
+
+      {/* Lumiverse Extension Drawer Preset */}
+      <LumiverseDrawer
+        isOpen={isLumiverseDrawerOpen}
+        onClose={() => setIsLumiverseDrawerOpen(false)}
+        onSaveToLibrary={handleSaveToLibrary}
+        nsfw={preferences.nsfw}
+        onToggleNsfw={(val) => handleUpdatePreferences({ nsfw: val })}
       />
 
       {/* Import Modal */}
