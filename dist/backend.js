@@ -1,448 +1,378 @@
-// --- UNIFIED RESILIENT NETWORK ENGINE ---
-async function httpFetch(url, options = {}) {
-  const headers = {
-    'Accept': 'application/json, text/plain, */*',
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-    ...(options.headers || {})
+const EXTENSION_ID = 'omni_character_hub';
+const SETTINGS_KEY = 'settings.v2';
+const SOURCES_KEY = 'sources.v2';
+
+const DEFAULT_SETTINGS = {
+  theme: 'auto',
+  density: 'comfortable',
+  view: 'grid',
+  columns: 3,
+  showTags: true,
+  showStats: true,
+  defaultSort: 'updated',
+  pageSize: 30,
+  tagMode: 'AND',
+  favoriteFirst: false
+};
+
+const DEFAULT_SOURCES = [
+  {
+    id: 'local',
+    name: 'Local Cards',
+    kind: 'local',
+    enabled: true,
+    description: 'Character cards you import from your device.',
+    accent: '#7c5cff'
+  }
+];
+
+function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+async function storageGet(key, fallback) {
+  const s = spindle?.userStorage;
+  if (!s) return fallback;
+  for (const method of ['get', 'read']) {
+    try {
+      if (typeof s[method] !== 'function') continue;
+      const value = await s[method](key);
+      if (value !== undefined && value !== null) return value;
+    } catch {}
+  }
+  return fallback;
+}
+
+async function storageSet(key, value) {
+  const s = spindle?.userStorage;
+  if (!s) return false;
+  for (const method of ['set', 'write']) {
+    try {
+      if (typeof s[method] !== 'function') continue;
+      await s[method](key, value);
+      return true;
+    } catch {}
+  }
+  return false;
+}
+
+async function getSettings() {
+  const saved = await storageGet(SETTINGS_KEY, {});
+  return { ...DEFAULT_SETTINGS, ...(saved && typeof saved === 'object' ? saved : {}) };
+}
+
+async function saveSettings(patch) {
+  const next = { ...(await getSettings()), ...(patch || {}) };
+  await storageSet(SETTINGS_KEY, next);
+  return next;
+}
+
+async function getSources() {
+  const saved = await storageGet(SOURCES_KEY, null);
+  if (!Array.isArray(saved) || !saved.length) {
+    await storageSet(SOURCES_KEY, DEFAULT_SOURCES);
+    return deepClone(DEFAULT_SOURCES);
+  }
+  return saved.map(normalizeSource);
+}
+
+function normalizeSource(source) {
+  const id = String(source?.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 48);
+  return {
+    id: id || `source_${Date.now().toString(36)}`,
+    name: String(source?.name || 'Unnamed Source').trim().slice(0, 80),
+    kind: source?.kind === 'local' ? 'local' : 'custom',
+    enabled: source?.enabled !== false,
+    description: String(source?.description || '').slice(0, 200),
+    accent: String(source?.accent || '#7c5cff').slice(0, 20),
+    homepage: String(source?.homepage || '').slice(0, 300),
+    notes: String(source?.notes || '').slice(0, 500)
+  };
+}
+
+async function saveSources(sources) {
+  const unique = [];
+  const seen = new Set();
+  for (const source of Array.isArray(sources) ? sources : []) {
+    const s = normalizeSource(source);
+    if (seen.has(s.id)) continue;
+    seen.add(s.id);
+    unique.push(s);
+  }
+  if (!unique.some(s => s.id === 'local')) unique.unshift(DEFAULT_SOURCES[0]);
+  await storageSet(SOURCES_KEY, unique);
+  return unique;
+}
+
+function cleanString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function stringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(cleanString).filter(Boolean))].slice(0, 80);
+}
+
+function looksExplicit(card) {
+  // Conservative metadata-only gate. We do not inspect prompt prose or search for
+  // mature keywords; explicit imports are simply skipped when the card declares
+  // an adult/NSFW/mature boolean field.
+  const flags = [
+    card?.nsfw, card?.adult, card?.mature, card?.is_nsfw,
+    card?.extensions?.nsfw, card?.extensions?.adult, card?.extensions?.mature,
+    card?.data?.nsfw, card?.data?.adult, card?.data?.mature
+  ];
+  return flags.some(v => v === true || String(v).toLowerCase() === 'true');
+}
+
+function normalizeCard(raw, sourceLabel='Local Cards') {
+  const root = raw?.data && typeof raw.data === 'object' ? raw.data : raw;
+  const extensions = root?.extensions && typeof root.extensions === 'object' ? root.extensions : {};
+  return {
+    name: cleanString(root?.name) || 'Imported Character',
+    description: cleanString(root?.description),
+    personality: cleanString(root?.personality),
+    scenario: cleanString(root?.scenario),
+    first_mes: cleanString(root?.first_mes),
+    mes_example: cleanString(root?.mes_example),
+    creator_notes: cleanString(root?.creator_notes),
+    system_prompt: cleanString(root?.system_prompt),
+    post_history_instructions: cleanString(root?.post_history_instructions),
+    tags: stringArray(root?.tags || root?.topics),
+    alternate_greetings: stringArray(root?.alternate_greetings),
+    creator: cleanString(root?.creator) || 'Community',
+    extensions: {
+      [EXTENSION_ID]: {
+        imported_source: sourceLabel,
+        imported_at: Math.floor(Date.now() / 1000),
+        original_card_version: root?.spec_version || root?.spec || 'unknown'
+      },
+      source: extensions.source
+    }
+  };
+}
+
+function toSummary(char) {
+  const ext = char?.extensions?.[EXTENSION_ID] || {};
+  const tags = Array.isArray(char?.tags) ? char.tags : [];
+  return {
+    id: char.id,
+    name: char.name || 'Unnamed',
+    creator: char.creator || 'Community',
+    description: char.description || '',
+    tags,
+    sourceId: String(ext.imported_source_id || 'local'),
+    sourceName: String(ext.imported_source || 'Local Cards'),
+    createdAt: char.created_at || 0,
+    updatedAt: char.updated_at || char.created_at || 0,
+    alternateGreetings: Array.isArray(char.alternate_greetings) ? char.alternate_greetings.length : 0
+  };
+}
+
+function matchesQuery(item, query) {
+  if (!query) return true;
+  const hay = [
+    item.name, item.creator, item.description, ...(item.tags || []), item.sourceName
+  ].join(' ').toLowerCase();
+  return hay.includes(query.toLowerCase());
+}
+
+function matchesTags(item, tags, mode) {
+  if (!tags?.length) return true;
+  const normalized = new Set((item.tags || []).map(t => t.toLowerCase()));
+  const checks = tags.map(t => normalized.has(String(t).toLowerCase()));
+  return mode === 'OR' ? checks.some(Boolean) : checks.every(Boolean);
+}
+
+function sortItems(items, sort, favoriteFirst) {
+  const arr = [...items];
+  if (favoriteFirst) {
+    arr.sort((a,b) => Number(b._favorite) - Number(a._favorite));
+  }
+  arr.sort((a,b) => {
+    if (sort === 'name') return a.name.localeCompare(b.name);
+    if (sort === 'creator') return a.creator.localeCompare(b.creator);
+    if (sort === 'created') return Number(b.createdAt) - Number(a.createdAt);
+    return Number(b.updatedAt) - Number(a.updatedAt);
+  });
+  return arr;
+}
+
+async function listLibrary(payload={}) {
+  const { data } = await spindle.characters.list({ limit: 200, offset: 0 });
+  const all = (Array.isArray(data) ? data : []).map(toSummary);
+
+  const sources = await getSources();
+  const favorites = new Set((await storageGet('favorites.v2', []) || []).map(String));
+
+  let items = all.map(item => ({ ...item, _favorite: favorites.has(String(item.id)) }));
+  const sourceId = cleanString(payload.sourceId);
+  if (sourceId) items = items.filter(item => item.sourceId === sourceId);
+  if (payload.query) items = items.filter(item => matchesQuery(item, payload.query));
+  items = items.filter(item => matchesTags(item, payload.tags || [], payload.tagMode || 'AND'));
+
+  const filtered = sortItems(items, payload.sort || (await getSettings()).defaultSort, payload.favoriteFirst);
+  const pageSize = Math.max(1, Math.min(100, Number(payload.pageSize || 30)));
+  const page = Math.max(1, Number(payload.page || 1));
+  const start = (page - 1) * pageSize;
+
+  const tagCounts = {};
+  for (const item of filtered) for (const tag of item.tags || []) {
+    const key = String(tag);
+    tagCounts[key] = (tagCounts[key] || 0) + 1;
+  }
+
+  return {
+    items: filtered.slice(start, start + pageSize),
+    total: filtered.length,
+    page,
+    pageSize,
+    hasNext: start + pageSize < filtered.length,
+    sources: sources.filter(s => s.enabled),
+    facets: Object.entries(tagCounts)
+      .map(([tag,count]) => ({ tag, count }))
+      .sort((a,b) => b.count - a.count || a.tag.localeCompare(b.tag))
+      .slice(0, 80)
+  };
+}
+
+async function getCharacter(id) {
+  const char = await spindle.characters.get(String(id));
+  if (!char) throw new Error('Character no longer exists in the library.');
+  const sourceInfo = char.extensions?.[EXTENSION_ID] || {};
+  return {
+    ...char,
+    sourceInfo
+  };
+}
+
+async function setFavorite(id, favorite) {
+  const current = new Set((await storageGet('favorites.v2', []) || []).map(String));
+  if (favorite) current.add(String(id)); else current.delete(String(id));
+  await storageSet('favorites.v2', [...current]);
+  return [...current];
+}
+
+async function ensureSource(sourceId, sourceName) {
+  const sources = await getSources();
+  const id = String(sourceId || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 48) || 'local';
+  const name = String(sourceName || 'Local Cards').trim().slice(0, 80) || 'Local Cards';
+  if (!sources.some(s => s.id === id)) {
+    sources.push({
+      id,
+      name,
+      kind: id === 'local' ? 'local' : 'custom',
+      enabled: true,
+      description: id === 'local' ? 'Character cards imported from your device.' : `Imported cards grouped under ${name}.`,
+      accent: id === 'local' ? '#7c5cff' : '#2fd39a'
+    });
+    await saveSources(sources);
+  }
+  return id;
+}
+
+async function importCardData(raw, sourceLabel='Local Cards', sourceId='local', originalName='') {
+  if (!raw || typeof raw !== 'object') throw new Error('The selected card is not valid JSON.');
+  const cardRoot = raw?.data && typeof raw.data === 'object' ? raw.data : raw;
+  if (looksExplicit(raw) || looksExplicit(cardRoot)) {
+    throw new Error('This extension only imports cards that do not declare mature/adult content in their metadata.');
+  }
+
+  sourceId = await ensureSource(sourceId, sourceLabel);
+  const card = normalizeCard(cardRoot, sourceLabel);
+  card.extensions[EXTENSION_ID] = {
+    imported_source: sourceLabel,
+    imported_source_id: sourceId,
+    imported_at: Math.floor(Date.now() / 1000),
+    original_name: originalName || card.name
   };
 
-  if (typeof spindle !== 'undefined' && typeof spindle.cors === 'function') {
-    try {
-      const res = await spindle.cors(url, { ...options, headers });
-      if (res && res.body) {
-        if (typeof res.body === 'string') {
-          try { return JSON.parse(res.body); } catch { return res.body; }
-        }
-        return res.body;
-      }
-    } catch (e) {
-      spindle.log?.warn?.(`spindle.cors notice: ${e.message}`);
-    }
-  }
-
-  const res = await fetch(url, { ...options, headers });
-  const text = await res.text();
-  try { return JSON.parse(text); } catch { return text; }
+  const imported = await spindle.characters.create(card);
+  return { character: imported, characterName: imported?.name || card.name };
 }
 
-function approxTokens(str) {
-  if (!str) return 0;
-  return Math.round(str.length / 3.8);
+function bytesFromBase64(base64) {
+  const bin = atob(base64);
+  const out = new Uint8Array(bin.length);
+  for (let i=0; i<bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
 }
-
-// ==========================================
-// 1. CHUB.AI PROVIDER
-// ==========================================
-const Chub = {
-  apiBase: 'https://api.chub.ai',
-  avatarBase: 'https://avatars.charhub.io/avatars',
-
-  async search({ query = '', page = 1, sort = 'download_count', nsfw = false, tag = '' }) {
-    const params = new URLSearchParams({
-      search: query,
-      first: '24',
-      page: String(page),
-      sort: sort,
-      venus: 'false',
-      asc: 'false',
-      nsfw: nsfw ? 'true' : 'false'
-    });
-    if (tag) params.append('topics', tag);
-
-    const data = await httpFetch(`${this.apiBase}/search?${params}`);
-    const nodes = data?.data?.nodes || data?.nodes || [];
-
-    return {
-      characters: nodes.map(c => ({
-        id: c.fullPath,
-        name: c.name || 'Unnamed',
-        creator: c.fullPath ? c.fullPath.split('/')[0] : 'Unknown',
-        avatarUrl: `${this.avatarBase}/${c.fullPath}/avatar.webp`,
-        tagline: c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
-        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 4),
-        downloads: c.download_count || 0,
-        stars: c.star_count || 0,
-        tokens: c.token_count || 0,
-        source: 'chub'
-      }))
-    };
-  },
-
-  async getDetails(fullPath) {
-    const res = await httpFetch(`${this.apiBase}/api/characters/${fullPath}?full=true`);
-    const node = res?.node || res || {};
-
-    let cardData = {};
-    try {
-      cardData = await httpFetch(`${this.apiBase}/api/characters/download`, {
-        method: 'POST',
-        body: JSON.stringify({ fullPath, format: 'tavern' }),
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch {
-      cardData = node.definition || {};
-    }
-
-    const d = cardData?.data || cardData || {};
-    const ext = d.extensions || {};
-    const charDesc = d.description || '';
-    const charPers = d.personality || node.personality || '';
-    const charFirstMes = d.first_mes || node.first_mes || '';
-
-    return {
-      id: fullPath,
-      name: d.name || node.name || 'Unnamed',
-      creator: fullPath.split('/')[0] || 'Unknown',
-      avatarUrl: `${this.avatarBase}/${fullPath}/avatar.webp`,
-      webSummary: node.description || node.tagline || 'No catalog summary provided.',
-      charDescription: charDesc || 'No character prompt definition found.',
-      personality: charPers || 'No personality definition visible.',
-      scenario: d.scenario || node.scenario || 'No scenario defined.',
-      first_mes: charFirstMes || 'Hello!',
-      alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
-      creator_notes: d.creator_notes || ext.creator_notes || '',
-      system_prompt: d.system_prompt || '',
-      mes_example: d.mes_example || '',
-      tags: (node.topics || d.tags || []).filter(t => t && t !== 'ROOT'),
-      downloads: node.download_count || 0,
-      stars: node.star_count || 0,
-      totalTokens: node.token_count || approxTokens(charDesc + charPers + charFirstMes),
-      source: 'chub'
-    };
-  },
-
-  async fetchCard(fullPath) {
-    const cardData = await httpFetch(`${this.apiBase}/api/characters/download`, {
-      method: 'POST',
-      body: JSON.stringify({ fullPath, format: 'tavern' }),
-      headers: { 'Content-Type': 'application/json' }
-    });
-    return { card: cardData };
-  }
-};
-
-// ==========================================
-// 2. JANNY / JANITOR PROVIDER
-// ==========================================
-const JannyAI = {
-  janitorApi: 'https://janitorai.com',
-  jannyDownload: 'https://api.jannyai.com/api/v1/download',
-
-  extractId(input) {
-    const match = input.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-    return match ? match[0] : input.trim();
-  },
-
-  async search({ query = '', page = 1, sort = 'trending', tag = '', nsfw = false }) {
-    // 1. Try Janitor Hampter direct API
-    try {
-      let sortParam = sort === 'popular' ? 'popular' : (sort === 'recent' ? 'latest' : 'trending');
-      const params = new URLSearchParams({
-        page: String(page),
-        sort: sortParam,
-        search: query,
-        nsfw: nsfw ? 'true' : 'false'
-      });
-      if (tag) params.append('tags', tag);
-
-      const data = await httpFetch(`${this.janitorApi}/hampter/characters?${params}`);
-      const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
-
-      if (items.length > 0) {
-        return {
-          characters: items.map(c => ({
-            id: c.id,
-            name: c.name || 'Unnamed',
-            creator: c.creator_name || c.author || 'Janitor Creator',
-            avatarUrl: c.avatar?.startsWith('http') ? c.avatar : `https://ella.janitorai.com/bot-avatars/${c.avatar}`,
-            tagline: c.description || c.personality?.slice(0, 90) || '',
-            tags: Array.isArray(c.tags) ? c.tags.slice(0, 4) : ['JanitorAI'],
-            downloads: c.stats?.chat || c.chat_count || 0,
-            stars: c.stats?.favorite || 0,
-            tokens: c.tokens || 0,
-            source: 'janny'
-          }))
-        };
-      }
-    } catch {}
-
-    // 2. Verified Janitor Mirror Search (Returns 24 top real bots)
-    const searchTerm = query ? query : (tag ? tag : 'janitor');
-    const params = new URLSearchParams({
-      search: searchTerm,
-      first: '24',
-      page: String(page),
-      sort: sort === 'recent' ? 'last_activity_at' : (sort === 'trending' ? 'star_count' : 'download_count'),
-      venus: 'false',
-      asc: 'false',
-      nsfw: nsfw ? 'true' : 'false'
-    });
-
-    const data = await httpFetch(`https://api.chub.ai/search?${params}`);
-    const nodes = data?.data?.nodes || data?.nodes || [];
-
-    return {
-      characters: nodes.map(c => ({
-        id: c.fullPath,
-        name: c.name || 'Unnamed',
-        creator: c.fullPath ? c.fullPath.split('/')[0] : 'Janitor Creator',
-        avatarUrl: `https://avatars.charhub.io/avatars/${c.fullPath}/avatar.webp`,
-        tagline: c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
-        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 4),
-        downloads: c.download_count || 0,
-        stars: c.star_count || 0,
-        tokens: c.token_count || 0,
-        source: 'janny'
-      }))
-    };
-  },
-
-  async getDetails(idOrPath) {
-    if (idOrPath.includes('/')) {
-      return await Chub.getDetails(idOrPath);
-    }
-
-    const uuid = this.extractId(idOrPath);
-    try {
-      const data = await httpFetch(`${this.janitorApi}/hampter/characters/${uuid}`);
-      const c = data?.character || data || {};
-
-      return {
-        id: uuid,
-        name: c.name || 'Janitor Character',
-        creator: c.creator_name || 'Janitor Creator',
-        avatarUrl: c.avatar?.startsWith('http') ? c.avatar : `https://ella.janitorai.com/bot-avatars/${c.avatar}`,
-        webSummary: c.description || 'Janitor character definition.',
-        charDescription: c.personality || c.description || 'Definition encoded in card.',
-        personality: c.personality || 'Defined in card file.',
-        scenario: c.scenario || 'Scenario included in prompt.',
-        first_mes: c.first_message || 'Ready for chat.',
-        alternate_greetings: Array.isArray(c.first_messages) ? c.first_messages : [],
-        creator_notes: c.creator_notes || '',
-        system_prompt: '',
-        mes_example: c.example_dialogs || '',
-        tags: Array.isArray(c.tags) ? c.tags : ['JanitorAI'],
-        downloads: c.stats?.chat || 0,
-        stars: c.stats?.favorite || 0,
-        totalTokens: c.tokens || approxTokens((c.personality || '') + (c.first_message || '')),
-        source: 'janny'
-      };
-    } catch {
-      return {
-        id: uuid,
-        name: 'Janitor Character',
-        creator: 'JanitorAI',
-        avatarUrl: `https://image.jannyai.com/bot-avatars/${uuid}.webp`,
-        webSummary: 'Full character card ready for import.',
-        charDescription: 'All prompts will be extracted directly from card file.',
-        personality: 'Defined in card file.',
-        scenario: 'Available after import.',
-        first_mes: 'Ready for chat.',
-        alternate_greetings: [],
-        creator_notes: '',
-        system_prompt: '',
-        mes_example: '',
-        tags: ['JanitorAI'],
-        downloads: 0,
-        stars: 0,
-        totalTokens: 0,
-        source: 'janny'
-      };
-    }
-  },
-
-  async fetchCard(idOrPath) {
-    if (!idOrPath.includes('/') || idOrPath.startsWith('http')) {
-      const uuid = this.extractId(idOrPath);
-      const res = await httpFetch(this.jannyDownload, {
-        method: 'POST',
-        body: JSON.stringify({ characterId: uuid }),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (!res?.downloadUrl) throw new Error('Could not download card. Verify character UUID.');
-      const imgRes = await fetch(res.downloadUrl);
-      const pngBuffer = await imgRes.arrayBuffer();
-      return { rawPngBuffer: pngBuffer };
-    }
-
-    return await Chub.fetchCard(idOrPath);
-  }
-};
-
-// ==========================================
-// 3. DATACAT PROVIDER
-// ==========================================
-const Datacat = {
-  apiBase: 'https://datacat.run',
-
-  async search({ query = '', page = 1, sort = 'fresh', tag = '' }) {
-    // 1. Try official Datacat Client API
-    try {
-      const term = [query, tag].filter(Boolean).join(' ');
-      const endpoint = term
-        ? `${this.apiBase}/api/client/v1/characters?search=${encodeURIComponent(term)}&page=${page}`
-        : `${this.apiBase}/api/client/v1/fresh?page=${page}`;
-
-      const data = await httpFetch(endpoint, {
-        headers: { 'X-Datacat-Client-Id': 'datacat_client_v1', 'Accept': 'application/json' }
-      });
-
-      const items = Array.isArray(data) ? data : (data?.characters || data?.items || data?.nodes || data?.data);
-      if (Array.isArray(items) && items.length > 0) {
-        return {
-          characters: items.map(c => ({
-            id: c.id,
-            name: c.name || 'Unnamed',
-            creator: c.creator?.name || c.creator || 'Datacat Creator',
-            avatarUrl: `${this.apiBase}/api/client/v1/characters/${c.id}/avatar`,
-            tagline: c.summary || c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
-            tags: Array.isArray(c.tags) ? c.tags.slice(0, 4) : ['Datacat'],
-            downloads: c.kudos || c.downloads || 0,
-            stars: 0,
-            tokens: c.token_count || 0,
-            source: 'datacat'
-          }))
-        };
-      }
-    } catch {}
-
-    // 2. Verified Archive Search (Never blank, never fake folder cards)
-    const term = [query, tag].filter(Boolean).join(' ') || 'saucepan';
-    const params = new URLSearchParams({
-      search: term,
-      first: '24',
-      page: String(page),
-      sort: sort === 'fresh' ? 'last_activity_at' : 'download_count',
-      venus: 'false',
-      asc: 'false',
-      nsfw: 'true'
-    });
-
-    const data = await httpFetch(`https://api.chub.ai/search?${params}`);
-    const nodes = data?.data?.nodes || data?.nodes || [];
-
-    return {
-      characters: nodes.map(c => ({
-        id: c.fullPath,
-        name: c.name || 'Unnamed',
-        creator: c.fullPath ? c.fullPath.split('/')[0] : 'Datacat Creator',
-        avatarUrl: `https://avatars.charhub.io/avatars/${c.fullPath}/avatar.webp`,
-        tagline: c.tagline || (c.description ? c.description.slice(0, 90) + '...' : ''),
-        tags: (c.topics || []).filter(t => t && t !== 'ROOT').slice(0, 4),
-        downloads: c.download_count || 0,
-        stars: c.star_count || 0,
-        tokens: c.token_count || 0,
-        source: 'datacat'
-      }))
-    };
-  },
-
-  async getDetails(idOrPath) {
-    if (idOrPath.includes('/')) {
-      return await Chub.getDetails(idOrPath);
-    }
-
-    try {
-      const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${idOrPath}/card`, {
-        headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
-      });
-      const d = card?.data || card || {};
-
-      return {
-        id: idOrPath,
-        name: d.name || 'Datacat Character',
-        creator: d.creator || 'Datacat',
-        avatarUrl: `${this.apiBase}/api/client/v1/characters/${idOrPath}/avatar`,
-        webSummary: d.creator_notes || d.description?.slice(0, 140) || 'Datacat character definition.',
-        charDescription: d.description || 'Prompt definition encoded in card.',
-        personality: d.personality || 'Standard personality traits.',
-        scenario: d.scenario || 'No scenario defined.',
-        first_mes: d.first_mes || 'Ready for chat.',
-        alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings : [],
-        creator_notes: d.creator_notes || '',
-        system_prompt: d.system_prompt || '',
-        mes_example: d.mes_example || '',
-        tags: d.tags || ['Datacat'],
-        downloads: 0,
-        stars: 0,
-        totalTokens: approxTokens((d.description || '') + (d.personality || '') + (d.first_mes || '')),
-        source: 'datacat'
-      };
-    } catch {
-      return await Chub.getDetails(idOrPath);
-    }
-  },
-
-  async fetchCard(idOrPath) {
-    if (idOrPath.includes('/')) {
-      return await Chub.fetchCard(idOrPath);
-    }
-    const card = await httpFetch(`${this.apiBase}/api/client/v1/characters/${idOrPath}/card`, {
-      headers: { 'X-Datacat-Client-Id': 'datacat_client_v1' }
-    });
-    return { card };
-  }
-};
-
-// --- IPC ROUTER ---
-const providers = { chub: Chub, janny: JannyAI, datacat: Datacat };
 
 spindle.onFrontendMessage(async (msg, userId) => {
-  const { action, provider = 'chub', payload = {}, requestId } = msg || {};
-
+  const { action, payload = {}, requestId } = msg || {};
   try {
-    const current = providers[provider];
-    if (!current) throw new Error(`Unknown provider: ${provider}`);
+    let result;
 
-    if (action === 'SEARCH') {
-      const results = await current.search(payload);
-      spindle.sendToFrontend({ type: 'SEARCH_RESULT', requestId, results }, userId);
-      return;
-    }
+    switch (action) {
+      case 'BOOT':
+        result = { settings: await getSettings(), sources: await getSources() };
+        break;
 
-    if (action === 'GET_DETAILS') {
-      const details = await current.getDetails(payload.id);
-      spindle.sendToFrontend({ type: 'DETAILS_RESULT', requestId, details }, userId);
-      return;
-    }
+      case 'SAVE_SETTINGS':
+        result = { settings: await saveSettings(payload) };
+        break;
 
-    if (action === 'IMPORT') {
-      const { id } = payload;
-      const cardPayload = await current.fetchCard(id);
-      let characterName = 'Character';
+      case 'SAVE_SOURCES':
+        result = { sources: await saveSources(payload.sources) };
+        break;
 
-      if (cardPayload.rawPngBuffer) {
-        const imported = await spindle.characters.importFile(cardPayload.rawPngBuffer);
-        characterName = imported?.name || characterName;
-      } else {
-        const raw = cardPayload.card?.data || cardPayload.card || {};
-        const charDto = {
-          name: raw.name || 'Imported Character',
-          description: raw.description || '',
-          personality: raw.personality || '',
-          scenario: raw.scenario || '',
-          first_mes: raw.first_mes || '',
-          mes_example: raw.mes_example || '',
-          creator_notes: raw.creator_notes || '',
-          system_prompt: raw.system_prompt || '',
-          post_history_instructions: raw.post_history_instructions || '',
-          tags: Array.isArray(raw.tags) ? raw.tags : (Array.isArray(raw.topics) ? raw.topics : []),
-          alternate_greetings: Array.isArray(raw.alternate_greetings) ? raw.alternate_greetings : [],
-          creator: raw.creator || 'Community'
-        };
+      case 'LIST_LIBRARY':
+        result = await listLibrary(payload);
+        break;
 
-        const imported = await spindle.characters.create(charDto);
-        characterName = imported?.name || charDto.name;
+      case 'GET_CHARACTER':
+        result = { character: await getCharacter(payload.id) };
+        break;
+
+      case 'SET_FAVORITE':
+        result = { favorites: await setFavorite(payload.id, Boolean(payload.favorite)) };
+        break;
+
+      case 'IMPORT_JSON':
+        result = await importCardData(payload.card, payload.sourceName || 'Local Cards', payload.sourceId || 'local', payload.fileName || '');
+        break;
+
+      case 'IMPORT_FILE_BASE64': {
+        const sourceName = payload.sourceName || 'Local Cards';
+        const sourceId = await ensureSource(
+          payload.sourceId || String(sourceName).toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 48) || 'local',
+          sourceName
+        );
+        const bytes = bytesFromBase64(String(payload.base64 || ''));
+        const imported = await spindle.characters.importFile(bytes.buffer);
+        const importedId = imported?.id;
+        if (importedId && spindle.characters.update) {
+          try {
+            await spindle.characters.update(importedId, {
+              extensions: {
+                [EXTENSION_ID]: {
+                  imported_source: sourceName,
+                  imported_source_id: sourceId,
+                  imported_at: Math.floor(Date.now() / 1000),
+                  original_file: payload.fileName || ''
+                }
+              }
+            });
+          } catch {}
+        }
+        result = { character: imported, characterName: imported?.name || payload.fileName || 'Imported Character' };
+        break;
       }
 
-      spindle.sendToFrontend({ type: 'IMPORT_SUCCESS', requestId, characterName }, userId);
+      case 'DELETE_CHARACTER':
+        result = { deleted: await spindle.characters.delete(String(payload.id)) };
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${action}`);
     }
+
+    spindle.sendToFrontend({ type: 'OK', requestId, result }, userId);
   } catch (err) {
     spindle.sendToFrontend({
       type: 'ERROR',
       requestId,
-      error: err.message || 'Operation failed'
+      error: err?.message || 'Operation failed'
     }, userId);
   }
 });
