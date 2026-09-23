@@ -1,25 +1,688 @@
-export function setup(ctx){
- const icon=`<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M12 2c-3 0-5 2.2-5 5.2 0 3.1 2.5 5 5 6.6 2.5-1.6 5-3.5 5-6.6C17 4.2 15 2 12 2Z" fill="#8b5cf6"/><path d="M12 13.5V22M12 17c-2-1.5-4-1.2-5.5.5M12 15.5c2-1.4 4-1 5.5.7" stroke="#34d399" stroke-width="1.7" stroke-linecap="round"/></svg>`;
- const sources={
-  chub:{name:'Chub.ai',accent:'#8b5cf6',sorts:[['download_count','Most Popular'],['star_count','Top Rated'],['last_activity_at','Recently Active'],['created_at','Newest']],tags:['Anime','RPG','Female','Male','Romance','Fantasy','Dominant','Submissive','Yandere','Monster Girl','Sci-Fi','Horror','Slice of Life','Comedy','Mystery','Superhero','Villain']},
-  janny:{name:'Janny AI',accent:'#22c55e',sorts:[['trending','Trending'],['popular','Popular'],['recent','Newest']],tags:['AnyPOV','MalePOV','FemPOV','Enemies to Lovers','Slow Burn','Angst','Fluff','Monster','Royalty','Mafia','Supernatural','College','Vampire']},
-  datacat:{name:'Datacat',accent:'#38bdf8',sorts:[['fresh','Fresh Catalog'],['popular','Popular']],tags:['Janitor','Saucepan','OC','RPG','Fluff','Angst','Romance','Fantasy','Modern','Sci-Fi']}
- };
- const tab=ctx.ui.registerDrawerTab({id:'omni_browser',title:'Omni Browser',shortName:'Omni',description:'Browse characters across Chub.ai, Janny AI and Datacat.',headerTitle:'Omni Character Browser',iconSvg:icon});
- const root=tab.root;
- ctx.dom.addStyle(`
- .omni,.omni *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.omni{height:100%;min-height:0;background:#08090d;color:#eef2ff;display:flex;flex-direction:column;overflow:hidden}.omni button,.omni input,.omni select{font:inherit}.top{padding:14px 16px 10px;border-bottom:1px solid #202331;background:linear-gradient(180deg,#11131c,#0b0c11)}.brand{display:flex;align-items:center;gap:10px}.brand h2{font-size:16px;margin:0}.brand p{font-size:11px;color:#8992aa;margin:2px 0 0}.sourcebar{display:flex;gap:6px;margin-top:13px;overflow:auto}.source{border:1px solid #272b3b;background:#11131c;color:#9ca5bd;border-radius:10px;padding:8px 12px;cursor:pointer;white-space:nowrap}.source.active{color:#fff;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,#11131c)}.tools{padding:10px 16px;display:flex;gap:7px;border-bottom:1px solid #1b1e28;background:#0c0e14}.search{flex:1;display:flex;align-items:center;background:#121520;border:1px solid #292e3d;border-radius:10px;padding:0 11px}.search input{width:100%;border:0;outline:0;background:transparent;color:#fff;padding:10px 6px;font-size:12px}.btn{border:1px solid #2a2e3d;background:#151824;color:#dce2f2;border-radius:9px;padding:9px 11px;cursor:pointer}.btn.primary{background:#7c3aed;border-color:#8b5cf6;color:white}.btn.active{border-color:#8b5cf6;color:#ddd6fe}.filters{padding:8px 16px;display:flex;gap:7px;align-items:center;border-bottom:1px solid #1b1e28;overflow:auto}.select{background:#121520;color:#dce2f2;border:1px solid #292e3d;border-radius:8px;padding:7px 9px;font-size:11px}.count{margin-left:auto;color:#747d95;font-size:11px;white-space:nowrap}.content{position:relative;flex:1;min-height:0;overflow:auto;padding:12px 16px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{background:#11131b;border:1px solid #222635;border-radius:13px;overflow:hidden;cursor:pointer;transition:.16s}.card:hover{transform:translateY(-2px);border-color:#41465b}.pic{aspect-ratio:1/1.15;background:#0d0f15;position:relative}.pic img{width:100%;height:100%;object-fit:cover}.badge{position:absolute;left:7px;top:7px;background:#08090dcc;border:1px solid #ffffff18;border-radius:7px;padding:4px 6px;font-size:9px;color:#dbe2f4}.body{padding:9px}.name{font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.creator{font-size:10px;color:#737c95;margin-top:3px}.desc{font-size:10px;color:#aeb6c9;margin-top:7px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}.chip{font-size:9px;color:#9da7bd;background:#171a25;border:1px solid #252a39;border-radius:99px;padding:3px 6px}.meta{display:flex;justify-content:space-between;color:#6f7890;font-size:9px;margin-top:8px}.empty{padding:50px 15px;text-align:center;color:#69738b;font-size:12px}.drawer{position:absolute;inset:0;background:#0b0d13;z-index:20;transform:translateX(105%);transition:.22s;display:flex;flex-direction:column}.drawer.open{transform:translateX(0)}.detailHead{padding:12px 14px;border-bottom:1px solid #232735;display:flex;gap:10px;align-items:center}.avatar{width:64px;height:64px;border-radius:11px;object-fit:cover;background:#121520;cursor:zoom-in}.detailTitle{min-width:0;flex:1}.detailTitle h3{margin:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.detailTitle p{margin:4px 0 0;color:#8089a0;font-size:10px}.detailActions{display:flex;gap:6px}.tabs{display:flex;gap:5px;padding:8px 12px;border-bottom:1px solid #202331;overflow:auto}.tabbtn{background:#121520;border:1px solid #272b39;color:#8e98af;border-radius:8px;padding:7px 9px;font-size:10px;white-space:nowrap;cursor:pointer}.tabbtn.active{background:#262038;border-color:#8b5cf6;color:#fff}.detailBody{padding:13px;overflow:auto}.section{margin-bottom:13px}.section h4{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#8b5cf6;margin:0 0 6px}.block{white-space:pre-wrap;word-break:break-word;background:#11141d;border:1px solid #242938;border-radius:9px;padding:10px;font-size:11px;line-height:1.5;color:#c8cfdf}.tagpanel{position:absolute;left:16px;right:16px;top:82px;z-index:10;background:#11131b;border:1px solid #2a2e3d;border-radius:12px;box-shadow:0 18px 50px #0008;padding:12px;display:none}.tagpanel.open{display:block}.taggrid{display:flex;gap:6px;flex-wrap:wrap;max-height:180px;overflow:auto;margin-top:9px}.tagopt{border:1px solid #292e3d;background:#151824;color:#9ca5bd;border-radius:99px;padding:6px 9px;font-size:10px;cursor:pointer}.tagopt.active{background:#7c3aed;border-color:#8b5cf6;color:#fff}.pager{padding:8px 16px;border-top:1px solid #1b1e28;display:flex;justify-content:center;gap:8px}.pager span{font-size:10px;color:#7c869c;padding:8px}.settings{position:absolute;right:16px;top:82px;width:min(330px,calc(100% - 32px));z-index:12;background:#11131b;border:1px solid #2a2e3d;border-radius:12px;box-shadow:0 18px 50px #0008;padding:13px;display:none}.settings.open{display:block}.setting{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #202431;font-size:11px}.setting:last-child{border-bottom:0}.setting small{display:block;color:#737d94;margin-top:2px}.zoom{position:absolute;inset:0;background:#000e;display:none;align-items:center;justify-content:center;z-index:40;padding:20px}.zoom.open{display:flex}.zoom img{max-width:95%;max-height:90%;object-fit:contain;border-radius:12px}.closex{position:absolute;right:12px;top:12px}.sk{background:linear-gradient(90deg,#11131b,#1a1d27,#11131b);background-size:200% 100%;animation:sh 1.1s infinite;height:230px;border-radius:13px}@keyframes sh{to{background-position:-200% 0}}@media(min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}`);
- root.innerHTML=`<div class="omni"><div class="top"><div class="brand">${icon}<div><h2>Omni Character Browser</h2><p>Browse each provider independently. Open profiles, inspect cards, then import.</p></div><button class="btn" id="settingsBtn" style="margin-left:auto">⚙</button></div><div class="sourcebar">${Object.entries(sources).map(([id,s])=>`<button class="source ${id==='chub'?'active':''}" style="--accent:${s.accent}" data-source="${id}">${s.name}</button>`).join('')}</div></div><div class="tools"><div class="search"><span>⌕</span><input id="q" placeholder="Search ${sources.chub.name} characters..."/></div><button class="btn" id="tagBtn">Tags</button><button class="btn primary" id="searchBtn">Search</button></div><div class="filters"><select class="select" id="sort"></select><button class="btn" id="clearBtn">Clear</button><span class="count" id="count">Ready</span></div><div class="content"><div class="tagpanel" id="tagPanel"><div style="font-size:11px;font-weight:700">Filter by provider tags</div><div class="taggrid" id="tagGrid"></div></div><div class="settings" id="settings"><div style="font-weight:700;font-size:12px;margin-bottom:6px">Browser settings</div><div class="setting"><div>View mode<small>Choose how character results are displayed.</small></div><select class="select" id="viewMode"><option value="grid">Grid</option><option value="compact">Compact</option></select></div><div class="setting"><div>Show tags<small>Display provider tags on cards.</small></div><input id="showTags" type="checkbox" checked></div><div class="setting"><div>Open profiles in panel<small>Keep browsing while inspecting a character.</small></div><input id="panelMode" type="checkbox" checked></div></div><div class="grid" id="grid"></div></div><div class="pager"><button class="btn" id="prev">←</button><span id="page">Page 1</span><button class="btn" id="next">→</button></div><div class="drawer" id="drawer"><div class="detailHead"><button class="btn" id="back">←</button><img class="avatar" id="avatar"><div class="detailTitle"><h3 id="dname"></h3><p id="dcreator"></p></div><div class="detailActions"><button class="btn" id="openImage">Image</button><button class="btn primary" id="import">Import</button></div></div><div class="tabs" id="detailTabs"><button class="tabbtn active" data-tab="overview">Overview</button><button class="tabbtn" data-tab="definition">Definition</button><button class="tabbtn" data-tab="greetings">Greetings</button><button class="tabbtn" data-tab="examples">Examples</button><button class="tabbtn" data-tab="stats">Stats</button></div><div class="detailBody" id="detailBody"></div></div><div class="zoom" id="zoom"><button class="btn closex" id="closeZoom">Close</button><img id="zoomImg"></div></div>`;
- const $=s=>root.querySelector(s); let source='chub',sort='download_count',tag='',page=1,current=null,tabKey='overview',view='grid';
- function call(action,payload={}){return new Promise((resolve,reject)=>{const id=Math.random().toString(36).slice(2),to=setTimeout(()=>reject(new Error('Request timed out')),20000);const h=m=>{if(m?.requestId!==id)return;clearTimeout(to);ctx.offBackendMessage?.(h);m.type==='ERROR'?reject(new Error(m.error)):resolve(m)};ctx.onBackendMessage(h);ctx.sendToBackend({action,provider:source,payload,requestId:id})})}
- function controls(){const s=sources[source];$('#sort').innerHTML=s.sorts.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');sort=s.sorts[0][0];$('#q').placeholder=`Search ${s.name} characters...`;renderTags()}
- function renderTags(){const s=sources[source];$('#tagGrid').innerHTML=s.tags.map(t=>`<button class="tagopt ${tag===t?'active':''}" data-tag="${t}">${t}</button>`).join('');root.querySelectorAll('.tagopt').forEach(b=>b.onclick=()=>{tag=tag===b.dataset.tag?'':b.dataset.tag;renderTags();page=1;load()})}
- function esc(v){return String(v??'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
- function skeleton(){ $('#grid').innerHTML=Array(6).fill('<div class="sk"></div>').join('') }
- async function load(){skeleton();$('#count').textContent='Loading…';try{const r=await call('SEARCH',{query:$('#q').value.trim(),page,sort,tag});const chars=r.results.characters||[];$('#page').textContent=`Page ${page}`;$('#count').textContent=`${chars.length} results · ${sources[source].name}`;$('#grid').innerHTML=chars.length?chars.map(c=>`<article class="card" data-id="${esc(c.id)}"><div class="pic"><img loading="lazy" src="${esc(c.avatarUrl)}"><span class="badge">${esc(sources[source].name)}</span></div><div class="body"><div class="name">${esc(c.name)}</div><div class="creator">by ${esc(c.creator)}</div><div class="desc">${esc(c.tagline)}</div><div class="chips">${$('#showTags').checked?(c.tags||[]).slice(0,4).map(t=>`<span class="chip">${esc(t)}</span>`).join(''):''}</div><div class="meta"><span>${Object.values(c.stats||{})[0]||0} activity</span><span>${c.stats?.tokens?c.stats.tokens+' tok':''}</span></div></div></article>`).join(''):'<div class="empty" style="grid-column:1/-1">No characters found on this provider. Try another search, tag, sort, or provider.</div>';root.querySelectorAll('.card').forEach(c=>c.onclick=()=>openDetails(c.dataset.id))}catch(e){$('#grid').innerHTML=`<div class="empty" style="grid-column:1/-1;color:#fca5a5">${esc(e.message)}</div>`;$('#count').textContent='Provider error'}}
- async function openDetails(id){$('#drawer').classList.add('open');$('#detailBody').innerHTML='<div class="empty">Loading complete character profile…</div>';try{current=await call('GET_DETAILS',{id}).then(r=>r.details);$('#avatar').src=current.avatarUrl;$('#dname').textContent=current.name;$('#dcreator').textContent=`by ${current.creator} · ${sources[current.source].name}`;renderDetail()}catch(e){$('#detailBody').innerHTML=`<div class="empty" style="color:#fca5a5">${esc(e.message)}</div>`}}
- function sec(title,body){return `<section class="section"><h4>${title}</h4><div class="block">${esc(body||'Not provided by the source.')}</div></section>`}
- function renderDetail(){if(!current)return;const d=current;root.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tabKey));let html='';if(tabKey==='overview'){html=sec('Summary',d.summary)+`<section class="section"><h4>Tags</h4><div class="chips">${(d.tags||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('')||'None'}</div></section>`}else if(tabKey==='definition'){html=sec('Description',d.description)+sec('Personality',d.personality)+sec('Scenario',d.scenario)+sec('System Prompt',d.system_prompt)}else if(tabKey==='greetings'){html=sec('First Message',d.first_mes)+(d.alternate_greetings||[]).map((x,i)=>sec(`Alternate Greeting ${i+1}`,x)).join('')}else if(tabKey==='examples'){html=sec('Example Dialogue',d.mes_example)+sec('Creator Notes',d.creator_notes)}else{html=sec('Provider',sources[d.source]?.name)+sec('Character ID',d.id)+sec('Statistics',JSON.stringify(d.stats||{},null,2))}$('#detailBody').innerHTML=html}
- $('#searchBtn').onclick=()=>{page=1;load()};$('#q').onkeydown=e=>{if(e.key==='Enter'){$('#searchBtn').click()}};$('#prev').onclick=()=>{if(page>1){page--;load()}};$('#next').onclick=()=>{page++;load()};$('#sort').onchange=e=>{sort=e.target.value;page=1;load()};$('#clearBtn').onclick=()=>{$('#q').value='';tag='';page=1;renderTags();load()};$('#tagBtn').onclick=()=>$('#tagPanel').classList.toggle('open');$('#settingsBtn').onclick=()=>$('#settings').classList.toggle('open');$('#viewMode').onchange=e=>{view=e.target.value;$('#grid').style.gridTemplateColumns=view==='compact'?'1fr':''};$('#showTags').onchange=load;$('#back').onclick=()=>$('#drawer').classList.remove('open');root.querySelectorAll('.tabbtn').forEach(b=>b.onclick=()=>{tabKey=b.dataset.tab;renderDetail()});$('#avatar').onclick=()=>{if(current){$('#zoomImg').src=current.avatarUrl;$('#zoom').classList.add('open')}};$('#openImage').onclick=()=>$('#avatar').click();$('#closeZoom').onclick=()=>$('#zoom').classList.remove('open');$('#zoom').onclick=e=>{if(e.target.id==='zoom')$('#zoom').classList.remove('open')};$('#import').onclick=async()=>{const b=$('#import');b.disabled=true;b.textContent='Importing…';try{const r=await call('IMPORT',{id:current.id});b.textContent='✓ Imported';setTimeout(()=>{b.disabled=false;b.textContent='Import'},1400)}catch(e){b.disabled=false;b.textContent='Retry';alert(e.message)}};
- root.querySelectorAll('.source').forEach(b=>b.onclick=()=>{root.querySelectorAll('.source').forEach(x=>x.classList.remove('active'));b.classList.add('active');source=b.dataset.source;page=1;tag='';controls();load()});controls();load();
+export function setup(ctx) {
+  const roseSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none">
+    <path d="M12 2C9.5 2 7 3.5 7 6.5C7 9.5 10 11.5 12 13C14 11.5 17 9.5 17 6.5C17 3.5 14.5 2 12 2Z" fill="#f43f5e" stroke="#e11d48" stroke-width="1.5"/>
+    <path d="M10 5C11 4 13 4 14 5C15 6.5 14.5 8 13.5 9C12.5 10 11.5 10 10.5 9C9.5 8 9 6.5 10 5Z" fill="#be123c"/>
+    <path d="M12 13V22" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+    <path d="M12 17C10 15 7 16 6 18C7.5 18.5 9.5 18 12 17Z" fill="#059669"/>
+    <path d="M12 15C14 13.5 17 14 18 16C16.5 16.5 14.5 16 12 15Z" fill="#059669"/>
+  </svg>`;
+
+  const PLATFORMS = {
+    chub: {
+      name: 'Chub.ai',
+      sorts: [
+        { id: 'download_count', name: '🔥 Most Popular' },
+        { id: 'star_count', name: '⭐ Top Rated' },
+        { id: 'last_activity_at', name: '✨ Recently Active' },
+        { id: 'created_at', name: '📅 Newly Added' }
+      ],
+      tags: ['Anime', 'RPG', 'Female', 'Male', 'Romance', 'Fantasy', 'Dominant', 'Submissive', 'Yandere', 'Monster Girl', 'Sci-Fi', 'Horror', 'Smut', 'Slice of Life', 'Comedy', 'Mystery', 'Superhero', 'Villain', 'Cyberpunk', 'Goth', 'Elf', 'Demon', 'Vampire', 'Tsundere']
+    },
+    janny: {
+      name: 'JanitorAI',
+      sorts: [
+        { id: 'trending', name: '🔥 Trending Now' },
+        { id: 'popular', name: '👑 All-Time Popular' },
+        { id: 'recent', name: '✨ Newly Added' }
+      ],
+      tags: ['AnyPOV', 'MalePOV', 'FemPOV', 'Enemies to Lovers', 'Dead Dove', 'Slow Burn', 'Angst', 'Fluff', 'Smut', 'Monster', 'Royalty', 'Mafia', 'Supernatural', 'College', 'Vampire', 'Step-sibling', 'Dominant', 'Submissive', 'Multiple', 'Arranged Marriage', 'Yandere']
+    },
+    datacat: {
+      name: 'Datacat',
+      sorts: [
+        { id: 'fresh', name: '🌱 Fresh Catalog' },
+        { id: 'popular', name: '🔥 Top Kudos' }
+      ],
+      tags: ['Janitor', 'Saucepan', 'OC', 'RPG', 'NSFW', 'Fluff', 'Angst', 'Romance', 'Fantasy', 'Modern', 'Sci-Fi', 'Comedy', 'Drama', 'Adventure']
+    }
+  };
+
+  // Modern Clean Dark Theme (Enforces crisp system sans-serif font)
+  ctx.dom.addStyle(`
+    .omni-root, .omni-root * {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif !important;
+      box-sizing: border-box;
+    }
+    .omni-root {
+      display: flex; flex-direction: column; height: 100%; padding: 8px; gap: 8px;
+      background: #090a0f; color: #f1f5f9; position: relative; overflow: hidden;
+    }
+
+    /* Pinned Topbar Button (Next to Settings) */
+    .omni-topbar-pinned {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: transparent; border: none; cursor: pointer; padding: 6px 10px;
+      color: inherit; transition: opacity 0.2s;
+    }
+    .omni-topbar-pinned:hover { opacity: 0.8; }
+
+    /* Segmented Platform Nav */
+    .omni-nav-tabs {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+      background: #12141c; padding: 3px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .omni-tab-btn {
+      padding: 6px 2px; font-size: 0.75rem; font-weight: 600; border: none;
+      background: transparent; color: #94a3b8; border-radius: 6px; cursor: pointer;
+      transition: all 0.15s ease; text-align: center;
+    }
+    .omni-tab-btn.active {
+      background: #e11d48; color: #fff; box-shadow: 0 2px 8px rgba(225, 29, 72, 0.35);
+    }
+
+    /* Compact Search & Action Bar */
+    .omni-bar-row { display: flex; gap: 6px; align-items: center; }
+    .omni-input-box {
+      flex: 1; display: flex; align-items: center; background: #12141c;
+      border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 0 8px;
+    }
+    .omni-input-box input {
+      width: 100%; padding: 7px 0; font-size: 0.78rem; border: none;
+      background: transparent; color: #fff; outline: none;
+    }
+    .omni-btn {
+      padding: 7px 12px; font-size: 0.75rem; font-weight: 600; border-radius: 8px;
+      border: none; background: #e11d48; color: #fff; cursor: pointer; white-space: nowrap;
+    }
+    .omni-btn-secondary {
+      padding: 7px 10px; font-size: 0.75rem; font-weight: 600; border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08); background: #12141c; color: #94a3b8; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+    }
+    .omni-btn-secondary.active { border-color: #e11d48; color: #fda4af; background: rgba(225, 29, 72, 0.15); }
+
+    /* Compact Sort Strip */
+    .omni-strip {
+      display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem;
+    }
+    .omni-select {
+      background: #12141c; border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd5e1; padding: 4px 8px; border-radius: 6px; font-size: 0.72rem; outline: none;
+    }
+
+    /* Dedicated Tag Search Modal (Non-Stretched Grid) */
+    .omni-tag-modal {
+      position: absolute; inset: 0; background: #090a0f; z-index: 60; display: none;
+      flex-direction: column; padding: 12px; gap: 10px; box-sizing: border-box;
+    }
+    .omni-tag-modal.open { display: flex; }
+    .omni-tag-grid {
+      flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+    }
+    .omni-modal-chip {
+      display: inline-flex; width: auto; max-width: max-content;
+      padding: 6px 12px; font-size: 0.75rem; border-radius: 20px;
+      background: #12141c; color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;
+      white-space: nowrap; transition: all 0.15s ease;
+    }
+    .omni-modal-chip.active { background: #e11d48; color: #fff; border-color: #e11d48; }
+
+    /* 2-Column Responsive Card Grid (1:1.3 ratio) */
+    .omni-grid {
+      flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(2, 1fr);
+      gap: 8px; padding-right: 2px;
+    }
+    .omni-card {
+      background: #12141c; border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+    .omni-card:hover { border-color: rgba(225, 29, 72, 0.4); transform: translateY(-2px); }
+    .omni-thumb-wrap { position: relative; width: 100%; aspect-ratio: 1 / 1.25; background: #0b0d13; }
+    .omni-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .omni-card-source {
+      position: absolute; top: 4px; left: 4px; padding: 2px 5px; font-size: 0.55rem;
+      font-weight: 700; text-transform: uppercase; border-radius: 4px; background: rgba(0,0,0,0.75);
+    }
+    .omni-card-body { padding: 6px; display: flex; flex-direction: column; flex: 1; justify-content: space-between; gap: 2px; }
+    .omni-card-title { font-size: 0.78rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .omni-card-author { font-size: 0.65rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .omni-card-meta { display: flex; justify-content: space-between; font-size: 0.62rem; color: #94a3b8; margin-top: 2px; }
+
+    /* Shimmer Skeleton */
+    .omni-skeleton {
+      background: #12141c; border-radius: 8px; aspect-ratio: 1 / 1.4; overflow: hidden; position: relative;
+    }
+    .omni-skeleton::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+      animation: omniShimmer 1.2s infinite;
+    }
+    @keyframes omniShimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+    /* Contained Character Inspector */
+    .omni-inspector {
+      position: absolute; inset: 0; background: #090a0f; z-index: 50; display: flex;
+      flex-direction: column; transform: translateX(100%); transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+    }
+    .omni-inspector.open { transform: translateX(0); }
+    .omni-inspector-top {
+      padding: 8px 10px; display: flex; gap: 8px; align-items: center;
+      background: #12141c; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
+    }
+    .omni-inspector-thumb {
+      width: 42px; height: 42px; border-radius: 6px; object-fit: cover;
+      cursor: pointer; border: 1px solid rgba(225, 29, 72, 0.4); flex-shrink: 0;
+    }
+    .omni-inspector-subtabs {
+      display: flex; gap: 4px; padding: 6px 10px; background: #0b0d13;
+      border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; overflow-x: auto; scrollbar-width: none;
+    }
+    .omni-subtab {
+      padding: 5px 8px; font-size: 0.7rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);
+      background: #12141c; color: #94a3b8; cursor: pointer; white-space: nowrap;
+    }
+    .omni-subtab.active { background: #e11d48; color: #fff; border-color: #e11d48; font-weight: 600; }
+    .omni-inspector-body {
+      flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .omni-block {
+      background: #12141c; border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 8px 10px; border-radius: 6px; font-size: 0.75rem; line-height: 1.45; color: #cbd5e1;
+      white-space: pre-wrap; word-break: break-word;
+    }
+
+    /* Centered Image Viewer */
+    .omni-img-modal {
+      position: absolute; inset: 0; background: rgba(0, 0, 0, 0.95); z-index: 100; display: none;
+      align-items: center; justify-content: center; flex-direction: column; padding: 12px; box-sizing: border-box;
+    }
+    .omni-img-modal.open { display: flex; }
+    .omni-img-modal img { max-width: 95%; max-height: 80%; object-fit: contain; border-radius: 8px; }
+
+    /* Footer Pagination */
+    .omni-pager {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 2px 0 2px; border-top: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
+    }
+    .omni-pager-btn {
+      padding: 4px 8px; font-size: 0.7rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);
+      background: #12141c; color: #fff; cursor: pointer;
+    }
+    .omni-pager-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  `);
+
+  let currentSource = 'chub';
+  let currentSort = 'download_count';
+  let selectedTag = '';
+  let currentPage = 1;
+  let currentSearch = '';
+  let includeNsfw = false;
+
+  function callBackend(action, payload) {
+    return new Promise((resolve, reject) => {
+      const requestId = Math.random().toString(36).slice(2);
+      const timer = setTimeout(() => {
+        ctx.offBackendMessage?.(handler);
+        reject(new Error("Request timed out. Please try again."));
+      }, 15000);
+
+      const handler = (msg) => {
+        if (msg?.requestId !== requestId) return;
+        clearTimeout(timer);
+        ctx.offBackendMessage?.(handler);
+        if (msg.type === 'ERROR') reject(new Error(msg.error || 'Operation failed'));
+        else resolve(msg);
+      };
+
+      ctx.onBackendMessage(handler);
+      ctx.sendToBackend({ action, provider: currentSource, payload, requestId });
+    });
+  }
+
+  // 1. PRIMARY DRAWER TAB (In the scroller)
+  const tab = ctx.ui.registerDrawerTab({
+    id: 'omni_rose_hub',
+    title: 'Character Hub',
+    shortName: 'Hub',
+    description: 'Browse Chub, JanitorAI, and Datacat',
+    headerTitle: 'Character Hub',
+    iconSvg: roseSvg
+  });
+
+  // 2. PINNED SHORTCUT BUTTON (Beside Settings)
+  function installPinnedRose() {
+    if (document.getElementById('omni-pinned-rose-btn')) return;
+
+    const rightButtons = Array.from(document.querySelectorAll('button'));
+    const targetAnchor = rightButtons.find(b => 
+      b.innerHTML.includes('#f59e0b') || 
+      b.innerHTML.includes('#eab308') || 
+      b.getAttribute('data-action') === 'datacat' || 
+      b.getAttribute('title')?.toLowerCase().includes('setting') ||
+      b.getAttribute('aria-label')?.toLowerCase().includes('setting') ||
+      b.querySelector('svg path[d*="M19.14"]')
+    );
+
+    if (targetAnchor && targetAnchor.parentElement) {
+      const roseBtn = document.createElement('button');
+      roseBtn.id = 'omni-pinned-rose-btn';
+      roseBtn.className = targetAnchor.className;
+      roseBtn.classList.add('omni-topbar-pinned');
+      roseBtn.setAttribute('title', 'Character Hub');
+      roseBtn.innerHTML = roseSvg;
+      roseBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        tab.activate();
+      };
+      targetAnchor.parentElement.insertBefore(roseBtn, targetAnchor);
+    }
+  }
+
+  installPinnedRose();
+  setInterval(installPinnedRose, 1000);
+
+  const container = tab.root;
+  container.innerHTML = `
+    <div class="omni-root">
+      <!-- FULL IMAGE PREVIEW MODAL -->
+      <div class="omni-img-modal" id="omni-img-modal">
+        <button class="omni-btn" id="omni-img-modal-close" style="position:absolute; top:12px; right:12px; padding:6px 12px;">&times; Close</button>
+        <img id="omni-preview-img" />
+        <span style="color:#64748b; font-size:0.75rem; margin-top:8px;">Tap anywhere to close</span>
+      </div>
+
+      <!-- DEDICATED TAGS MODAL -->
+      <div class="omni-tag-modal" id="omni-tag-modal">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:700; font-size:0.85rem;">Filter by Tag</span>
+          <button class="omni-btn" id="omni-tag-modal-close" style="padding:4px 8px;">&times; Close</button>
+        </div>
+        <div class="omni-input-box" style="margin:4px 0;">
+          <input type="text" id="omni-tag-search-input" placeholder="Type tag name to filter..." />
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <button id="omni-clear-tag" style="background:none; border:none; color:#f43f5e; font-size:0.75rem; cursor:pointer;">Clear Selected Tag</button>
+          <span id="omni-active-tag-label" style="font-size:0.72rem; color:#94a3b8;">Active: None</span>
+        </div>
+        <div class="omni-tag-grid" id="omni-tag-grid"></div>
+      </div>
+
+      <!-- CHARACTER DETAIL INSPECTOR -->
+      <div class="omni-inspector" id="omni-inspector">
+        <div class="omni-inspector-top">
+          <button class="omni-pager-btn" id="omni-detail-back">&larr; Back</button>
+          <img class="omni-inspector-thumb" id="omni-detail-thumb" title="Tap to preview image" />
+          <div style="flex:1; min-width:0;">
+            <div id="omni-detail-name" style="font-size:0.85rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+            <div id="omni-detail-author" style="font-size:0.68rem; color:#94a3b8;"></div>
+          </div>
+          <button class="omni-btn" id="omni-detail-import" style="padding:6px 10px;">📥 Import</button>
+        </div>
+
+        <div class="omni-inspector-subtabs">
+          <button class="omni-subtab active" data-tab="greetings">💬 Greetings (<span id="omni-greet-count">1</span>)</button>
+          <button class="omni-subtab" data-tab="definition">🎭 Definition</button>
+          <button class="omni-subtab" data-tab="summary">📖 Summary & Notes</button>
+          <button class="omni-subtab" data-tab="stats">📊 Specs</button>
+        </div>
+
+        <div class="omni-inspector-body" id="omni-detail-body"></div>
+      </div>
+
+      <!-- PLATFORM SEGMENTED NAV -->
+      <div class="omni-nav-tabs">
+        <button class="omni-tab-btn active" data-src="chub">Chub.ai</button>
+        <button class="omni-tab-btn" data-src="janny">JanitorAI</button>
+        <button class="omni-tab-btn" data-src="datacat">Datacat</button>
+      </div>
+
+      <!-- SEARCH BAR & TAG BUTTON -->
+      <div class="omni-bar-row">
+        <div class="omni-input-box">
+          <input type="text" id="omni-query" placeholder="Search characters or paste link..." />
+        </div>
+        <button class="omni-btn-secondary" id="omni-tag-btn">🏷️ Tags</button>
+        <button class="omni-btn" id="omni-go">Search</button>
+      </div>
+
+      <!-- COMPACT SORT STRIP -->
+      <div class="omni-strip">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span>Sort:</span>
+          <select class="omni-select" id="omni-sort-select"></select>
+        </div>
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="checkbox" id="omni-nsfw" /> NSFW
+        </label>
+      </div>
+
+      <!-- 2-COLUMN CARDS GRID -->
+      <div class="omni-grid" id="omni-grid"></div>
+
+      <!-- PAGINATION -->
+      <div class="omni-pager">
+        <button class="omni-pager-btn" id="omni-prev" disabled>&lt; Prev</button>
+        <span id="omni-page-display" style="font-size:0.72rem; font-weight:700; color:#94a3b8;">Page 1</span>
+        <button class="omni-pager-btn" id="omni-next">Next &gt;</button>
+      </div>
+    </div>
+  `;
+
+  // UI Bindings
+  const grid = container.querySelector('#omni-grid');
+  const input = container.querySelector('#omni-query');
+  const goBtn = container.querySelector('#omni-go');
+  const nsfwBox = container.querySelector('#omni-nsfw');
+  const pageDisplay = container.querySelector('#omni-page-display');
+  const prevBtn = container.querySelector('#omni-prev');
+  const nextBtn = container.querySelector('#omni-next');
+  const sortSelect = container.querySelector('#omni-sort-select');
+  const tagBtn = container.querySelector('#omni-tag-btn');
+
+  // Tag Modal Bindings
+  const tagModal = container.querySelector('#omni-tag-modal');
+  const tagModalClose = container.querySelector('#omni-tag-modal-close');
+  const tagSearchInput = container.querySelector('#omni-tag-search-input');
+  const tagGrid = container.querySelector('#omni-tag-grid');
+  const clearTagBtn = container.querySelector('#omni-clear-tag');
+  const activeTagLabel = container.querySelector('#omni-active-tag-label');
+
+  // Image Modal Bindings
+  const imgModal = container.querySelector('#omni-img-modal');
+  const previewImg = container.querySelector('#omni-preview-img');
+  const imgModalClose = container.querySelector('#omni-img-modal-close');
+
+  // Inspector Bindings
+  const inspector = container.querySelector('#omni-inspector');
+  const detailBack = container.querySelector('#omni-detail-back');
+  const detailThumb = container.querySelector('#omni-detail-thumb');
+  const detailName = container.querySelector('#omni-detail-name');
+  const detailAuthor = container.querySelector('#omni-detail-author');
+  const detailImport = container.querySelector('#omni-detail-import');
+  const detailBody = container.querySelector('#omni-detail-body');
+  const greetCountTxt = container.querySelector('#omni-greet-count');
+
+  let activeCharId = null;
+  let activeCharData = null;
+  let activeTab = 'greetings';
+
+  // Modal Handlers
+  detailThumb.onclick = () => {
+    if (!activeCharData?.avatarUrl) return;
+    previewImg.src = activeCharData.avatarUrl;
+    imgModal.classList.add('open');
+  };
+  imgModalClose.onclick = () => imgModal.classList.remove('open');
+  imgModal.onclick = (e) => { if (e.target !== previewImg) imgModal.classList.remove('open'); };
+  detailBack.onclick = () => inspector.classList.remove('open');
+
+  // Tag Modal Open/Close
+  tagBtn.onclick = () => {
+    tagModal.classList.add('open');
+    tagSearchInput.value = '';
+    renderTagChips('');
+  };
+  tagModalClose.onclick = () => tagModal.classList.remove('open');
+
+  function renderTagChips(filterTerm) {
+    const list = PLATFORMS[currentSource].tags;
+    const filtered = filterTerm
+      ? list.filter(t => t.toLowerCase().includes(filterTerm.toLowerCase()))
+      : list;
+
+    tagGrid.innerHTML = filtered.map(t => `
+      <span class="omni-modal-chip ${selectedTag.toLowerCase() === t.toLowerCase() ? 'active' : ''}" data-val="${t}">${t}</span>
+    `).join('');
+
+    tagGrid.querySelectorAll('.omni-modal-chip').forEach(chip => {
+      chip.onclick = (e) => {
+        selectedTag = e.target.getAttribute('data-val');
+        tagBtn.classList.add('active');
+        tagBtn.innerText = `🏷️ ${selectedTag}`;
+        activeTagLabel.innerText = `Active: ${selectedTag}`;
+        tagModal.classList.remove('open');
+        currentPage = 1;
+        loadCatalog();
+      };
+    });
+  }
+
+  tagSearchInput.addEventListener('input', (e) => {
+    renderTagChips(e.target.value.trim());
+  });
+
+  clearTagBtn.onclick = () => {
+    selectedTag = '';
+    tagBtn.classList.remove('active');
+    tagBtn.innerText = '🏷️ Tags';
+    activeTagLabel.innerText = 'Active: None';
+    tagModal.classList.remove('open');
+    currentPage = 1;
+    loadCatalog();
+  };
+
+  function updatePlatformControls() {
+    const cfg = PLATFORMS[currentSource];
+    sortSelect.innerHTML = cfg.sorts.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    currentSort = cfg.sorts[0].id;
+    selectedTag = '';
+    tagBtn.classList.remove('active');
+    tagBtn.innerText = '🏷️ Tags';
+    activeTagLabel.innerText = 'Active: None';
+  }
+
+  function renderSkeletons() {
+    grid.innerHTML = Array(6).fill(0).map(() => `<div class="omni-skeleton"></div>`).join('');
+  }
+
+  function renderInspectorTab(tabKey) {
+    if (!activeCharData) return;
+    const d = activeCharData;
+
+    if (tabKey === 'greetings') {
+      const altList = d.alternate_greetings || [];
+      detailBody.innerHTML = `
+        <div style="font-size:0.7rem; font-weight:700; color:#10b981; text-transform:uppercase;">Primary First Message</div>
+        <div class="omni-block" style="border-color:rgba(16,185,129,0.3);">${d.first_mes || 'No greeting defined.'}</div>
+
+        ${altList.length > 0 ? `
+          <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Alternate Greetings (${altList.length})</div>
+          ${altList.map((g, idx) => `
+            <div class="omni-block" style="border-color:rgba(244,63,94,0.2);">
+              <div style="font-size:0.65rem; font-weight:700; color:#fda4af; margin-bottom:4px;">Greeting #${idx + 2}</div>
+              ${g}
+            </div>
+          `).join('')}
+        ` : ''}
+
+        ${d.mes_example ? `
+          <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Example Dialogue</div>
+          <div class="omni-block">${d.mes_example}</div>
+        ` : ''}
+      `;
+    } else if (tabKey === 'definition') {
+      detailBody.innerHTML = `
+        <div style="font-size:0.7rem; font-weight:700; color:#10b981; text-transform:uppercase;">Prompt Definition</div>
+        <div class="omni-block">${d.charDescription || 'No prompt definition visible.'}</div>
+
+        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Personality</div>
+        <div class="omni-block">${d.personality || 'No personality definition visible.'}</div>
+
+        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Scenario</div>
+        <div class="omni-block">${d.scenario || 'No specific scenario.'}</div>
+      `;
+    } else if (tabKey === 'summary') {
+      detailBody.innerHTML = `
+        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase;">Catalog Summary</div>
+        <div class="omni-block">${d.webSummary || 'No summary provided.'}</div>
+
+        ${d.creator_notes ? `
+          <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Author Notes</div>
+          <div class="omni-block">${d.creator_notes}</div>
+        ` : ''}
+
+        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase; margin-top:6px;">Tags</div>
+        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+          ${(d.tags || []).map(t => `<span class="omni-modal-chip" style="font-size:0.65rem; padding:3px 8px;">${t}</span>`).join('')}
+        </div>
+      `;
+    } else if (tabKey === 'stats') {
+      detailBody.innerHTML = `
+        <div style="font-size:0.7rem; font-weight:700; color:#f43f5e; text-transform:uppercase;">Specifications</div>
+        <div class="omni-block">
+          • Estimated Total Tokens: <b>${d.totalTokens ? d.totalTokens.toLocaleString() : 'N/A'}</b><br>
+          • Source: <b>${d.source.toUpperCase()}</b><br>
+          • Format: <b>Character Card V2 (CCv2)</b>
+        </div>
+      `;
+    }
+  }
+
+  container.querySelectorAll('.omni-subtab').forEach(btn => {
+    btn.onclick = (e) => {
+      container.querySelectorAll('.omni-subtab').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      activeTab = e.target.getAttribute('data-tab');
+      renderInspectorTab(activeTab);
+    };
+  });
+
+  async function openCharacterDetails(charId) {
+    activeCharId = charId;
+    inspector.classList.add('open');
+    detailName.innerText = 'Loading card...';
+    detailAuthor.innerText = '';
+    detailBody.innerHTML = '<div style="text-align:center; padding:30px; color:#64748b;">Decoding character card...</div>';
+
+    try {
+      const res = await callBackend('GET_DETAILS', { id: charId });
+      activeCharData = res.details;
+      detailThumb.src = activeCharData.avatarUrl;
+      detailName.innerText = activeCharData.name;
+      detailAuthor.innerText = `by ${activeCharData.creator} • ${activeCharData.source.toUpperCase()}`;
+      greetCountTxt.innerText = String(1 + (activeCharData.alternate_greetings ? activeCharData.alternate_greetings.length : 0));
+      renderInspectorTab(activeTab);
+    } catch (e) {
+      detailBody.innerHTML = `<div style="color:#f87171; padding:20px; text-align:center;">Failed to load: ${e.message}</div>`;
+    }
+  }
+
+  detailImport.onclick = async () => {
+    if (!activeCharId) return;
+    detailImport.disabled = true;
+    detailImport.innerText = 'Importing...';
+    try {
+      const res = await callBackend('IMPORT', { id: activeCharId });
+      detailImport.innerText = '✓ In Library';
+      alert(`Imported "${res.characterName}" successfully!`);
+    } catch (e) {
+      alert(`Import failed: ${e.message}`);
+      detailImport.innerText = 'Retry';
+      detailImport.disabled = false;
+    }
+  };
+
+  async function loadCatalog() {
+    renderSkeletons();
+    goBtn.disabled = true;
+    prevBtn.disabled = currentPage <= 1;
+
+    try {
+      if (input.value.startsWith('http')) {
+        const res = await callBackend('IMPORT', { id: input.value.trim() });
+        alert(`Successfully imported "${res.characterName}"!`);
+        input.value = '';
+        loadCatalog();
+        return;
+      }
+
+      const res = await callBackend('SEARCH', {
+        query: currentSearch,
+        sort: currentSort,
+        tag: selectedTag,
+        page: currentPage,
+        nsfw: includeNsfw
+      });
+
+      const chars = res.results.characters || [];
+      pageDisplay.innerText = `Page ${currentPage}`;
+
+      if (!chars.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:#64748b;">No characters found matching your criteria.</div>';
+        return;
+      }
+
+      grid.innerHTML = chars.map(c => `
+        <div class="omni-card" data-id="${c.id}">
+          <div class="omni-thumb-wrap">
+            <img src="${c.avatarUrl}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2312141c%22/></svg>'"/>
+            <span class="omni-card-source">${c.source}</span>
+          </div>
+          <div class="omni-card-body">
+            <div>
+              <div class="omni-card-title">${c.name}</div>
+              <div class="omni-card-author">by ${c.creator}</div>
+            </div>
+            <div class="omni-card-meta">
+              <span>⬇️ ${c.downloads ? c.downloads.toLocaleString() : '0'}</span>
+              <span>${c.tokens ? c.tokens.toLocaleString() + ' tok' : ''}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('.omni-card').forEach(card => {
+        card.onclick = () => {
+          const id = card.getAttribute('data-id');
+          openCharacterDetails(id);
+        };
+      });
+    } catch (err) {
+      grid.innerHTML = `<div style="grid-column:1/-1; color:#f43f5e; text-align:center; padding:20px;">${err.message}</div>`;
+    } finally {
+      goBtn.disabled = false;
+      prevBtn.disabled = currentPage <= 1;
+    }
+  }
+
+  // Event Listeners
+  sortSelect.onchange = (e) => {
+    currentSort = e.target.value;
+    currentPage = 1;
+    loadCatalog();
+  };
+
+  container.querySelectorAll('.omni-tab-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      container.querySelectorAll('.omni-tab-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      currentSource = e.target.getAttribute('data-src');
+      currentPage = 1;
+      updatePlatformControls();
+      loadCatalog();
+    };
+  });
+
+  goBtn.onclick = () => {
+    currentSearch = input.value.trim();
+    currentPage = 1;
+    loadCatalog();
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') goBtn.click();
+  });
+
+  nsfwBox.onchange = (e) => {
+    includeNsfw = e.target.checked;
+    loadCatalog();
+  };
+
+  prevBtn.onclick = () => {
+    if (currentPage > 1) {
+      currentPage--;
+      loadCatalog();
+    }
+  };
+
+  nextBtn.onclick = () => {
+    currentPage++;
+    loadCatalog();
+  };
+
+  updatePlatformControls();
+  loadCatalog();
 }
