@@ -1,15 +1,7 @@
 {
+  "name": "omni-character-hub",
   "version": "2.0.0",
-  "name": "Omni Character Hub",
-  "identifier": "omni_character_hub",
-  "author": "Community",
-  "github": "https://github.com/yahooomega292-ai/omni-character-hub",
-  "homepage": "https://github.com/yahooomega292-ai/omni-character-hub",
-  "description": "A polished, SFW character-card browser and importer with independent source metadata, facets, deduplication, persistent preferences, and a clean library search experience.",
-  "permissions": [
-    "characters"
-  ],
-  "entry_backend": "dist/backend.js",
-  "entry_frontend": "dist/frontend.js",
-  "minimum_lumiverse_version": "1.0.0"
+  "private": true,
+  "type": "module",
+  "description": "SFW character-card library browser and importer for Lumiverse."
 }
